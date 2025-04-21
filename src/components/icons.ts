@@ -26,6 +26,7 @@ import {
   User,
   X,
   Workflow,
+  Search,
 } from 'lucide-react';
 
 const Icons = {
@@ -48,23 +49,7 @@ const Icons = {
   messageSquare: MessageSquare,
   plus: Plus,
   plusCircle: PlusCircle,
-  search: () => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="lucide lucide-search"
-    >
-      <circle cx="11" cy="11" r="8" />
-      <path d="m21 21-4.3-4.3" />
-    </svg>
-  ),
+  search: Search,
   server: Server,
   settings: Settings,
   share: Share2,
@@ -73,7 +58,7 @@ const Icons = {
   trash: Trash,
   user: User,
   logo: () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
       <path d="M3 3H21V21H3V3Z" fill="currentColor" />
       <path d="M7 7H17V9H7V7Z" fill="black" />
       <path d="M7 11H13V13H7V11Z" fill="black" />
@@ -83,4 +68,3 @@ const Icons = {
 };
 
 export {Icons};
-
