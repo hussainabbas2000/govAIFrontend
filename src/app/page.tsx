@@ -12,31 +12,20 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from '@/components/ui/sidebar';
-
 import {Icons} from '@/components/icons';
 import {Input} from '@/components/ui/input';
-import {useEffect, useState} from 'react';
-import {getSamGovOpportunities, SamGovOpportunity} from '@/services/sam-gov';
-import {getSeptaOpportunities, SeptaOpportunity} from '@/services/septa';
+import {useRouter} from 'next/navigation';
 
 export default function Home() {
-  const [samGovOpportunities, setSamGovOpportunities] = useState<
-    SamGovOpportunity[]
-  >([]);
-  const [septaOpportunities, setSeptaOpportunities] = useState<
-    SeptaOpportunity[]
-  >([]);
+  const router = useRouter();
 
-  useEffect(() => {
-    const fetchOpportunities = async () => {
-      const samGovData = await getSamGovOpportunities({});
-      const septaData = await getSeptaOpportunities({});
-      setSamGovOpportunities(samGovData);
-      setSeptaOpportunities(septaData);
-    };
+  const navigateToSamGov = () => {
+    router.push('/sam-gov');
+  };
 
-    fetchOpportunities();
-  }, []);
+  const navigateToSepta = () => {
+    router.push('/septa');
+  };
 
   return (
     <SidebarProvider>
@@ -68,26 +57,29 @@ export default function Home() {
         </SidebarFooter>
       </Sidebar>
       <main className="flex-1 p-4">
-        {/* Main content here */}
         <h1>Welcome to GovContract Navigator</h1>
-
-        <h2>SAM.gov Opportunities</h2>
-        <ul>
-          {samGovOpportunities.map(opportunity => (
-            <li key={opportunity.id}>
-              {opportunity.title} - {opportunity.agency} ({opportunity.location})
-            </li>
-          ))}
-        </ul>
-
-        <h2>SEPTA Opportunities</h2>
-        <ul>
-          {septaOpportunities.map(opportunity => (
-            <li key={opportunity.id}>
-              {opportunity.title} - {opportunity.department} ({opportunity.location})
-            </li>
-          ))}
-        </ul>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="border rounded-lg p-4 shadow-md">
+            <h2 className="text-lg font-semibold mb-2">SAM.gov Opportunities</h2>
+            <p>Discover federal contracting opportunities.</p>
+            <button
+              onClick={navigateToSamGov}
+              className="bg-primary text-primary-foreground rounded-md p-2 hover:bg-primary/80"
+            >
+              View Opportunities
+            </button>
+          </div>
+          <div className="border rounded-lg p-4 shadow-md">
+            <h2 className="text-lg font-semibold mb-2">SEPTA Opportunities</h2>
+            <p>Explore contracting opportunities with SEPTA.</p>
+            <button
+              onClick={navigateToSepta}
+              className="bg-primary text-primary-foreground rounded-md p-2 hover:bg-primary/80"
+            >
+              View Opportunities
+            </button>
+          </div>
+        </div>
       </main>
     </SidebarProvider>
   );
