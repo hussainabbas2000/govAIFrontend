@@ -29,7 +29,7 @@ const Icons = {
   spinner: Loader2,
   trash: Trash,
   user: User,
-  logo: () => (<>&#60;GCN/&#62;</>)
+  logo: () => ('GCN'),
 };
 
 export {Icons};
