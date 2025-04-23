@@ -22,6 +22,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
+import septaOpportunitiesData from '@/data/septa_open_quotes.json';
+
 const itemsPerPage = 10;
 
 export default function SeptaOpportunitiesPage() {
@@ -32,18 +34,12 @@ export default function SeptaOpportunitiesPage() {
   useEffect(() => {
     const fetchOpportunities = async () => {
       try {
-        const response = await fetch('/api/septa');
-        if (!response.ok) {
-          console.error(`HTTP error! status: ${response.status}`);
-          //Instead of throwing an error, handle the error case gracefully
-          setSeptaOpportunities([{error: `HTTP error! status: ${response.status}`}]);//setOpportunities to an array with an error
-          return;//early return, so that it does not attempt to parse the non existent json
-        }
-        const data = await response.json();
-        setSeptaOpportunities(data);
-      } catch (error) {
+        // Simulate API call delay (for demonstration purposes)
+        // await new Promise(resolve => setTimeout(resolve, 1000));
+        setSeptaOpportunities(septaOpportunitiesData);
+      } catch (error: any) {
         console.error('Failed to fetch SEPTA opportunities:', error);
-        setSeptaOpportunities([{error: 'Failed to fetch SEPTA opportunities'}]);
+        setSeptaOpportunities([{error: 'Failed to load SEPTA opportunities'}]);
       }
     };
 
@@ -141,4 +137,3 @@ export default function SeptaOpportunitiesPage() {
      </main>
    );
  }
-
