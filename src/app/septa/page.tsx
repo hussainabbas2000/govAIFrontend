@@ -26,6 +26,14 @@ import septaOpportunitiesData from '@/data/septa_open_quotes.json';
 
 const itemsPerPage = 10;
 
+function TotalListingsLabel({total}: {total: number}) {
+  return (
+    <div className="rounded-full bg-secondary text-secondary-foreground px-4 py-2 font-medium text-sm">
+      Total Listings: {total}
+    </div>
+  );
+}
+
 export default function SeptaOpportunitiesPage() {
   const [septaOpportunities, setSeptaOpportunities] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -34,8 +42,6 @@ export default function SeptaOpportunitiesPage() {
   useEffect(() => {
     const fetchOpportunities = async () => {
       try {
-        // Simulate API call delay (for demonstration purposes)
-        // await new Promise(resolve => setTimeout(resolve, 1000));
         setSeptaOpportunities(septaOpportunitiesData);
       } catch (error: any) {
         console.error(`Failed to fetch SEPTA opportunities: ${error}`);
@@ -81,7 +87,7 @@ export default function SeptaOpportunitiesPage() {
         <div className="my-4 flex items-center justify-between">
           <h2 className="text-3xl font-bold">SEPTA Opportunities</h2>
             {septaOpportunities && septaOpportunities.length > 0 && !septaOpportunities[0]?.error && (
-                <Label>Total Listings: {septaOpportunities.length}</Label>
+                <TotalListingsLabel total={septaOpportunities.length} />
             )}
           <div className="flex items-center space-x-2">
             <Label htmlFor="search">Search:</Label>
