@@ -112,7 +112,7 @@ export default function SeptaOpportunitiesPage() {
                   <CardTitle className="text-lg font-semibold">{opportunity.Title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CardDescription>Bid Number: {opportunity['Bid Number']}</CardDescription>
+                  <CardDescription>Description: </CardDescription>
                   <Button asChild>
                     <a href={opportunity.Link} target="_blank" rel="noopener noreferrer">
                       View Details
