@@ -198,6 +198,10 @@ export default function SamGovOpportunitiesPage() {
     setCurrentPage(1);
   };
 
+  const handleClearDate = () => {
+    setDateFilter(undefined);
+  };
+
   return (
     <main className="flex flex-col gap-4 p-4">
       <div className="container mx-auto max-w-screen-lg">
@@ -243,7 +247,7 @@ export default function SamGovOpportunitiesPage() {
                 onChange={handleLocationChange}
               />
             </div>
-            <div className="mb-2">
+            <div className="mb-2 flex items-center">
               <Label>Closing Date:</Label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -271,6 +275,16 @@ export default function SamGovOpportunitiesPage() {
                   />
                 </PopoverContent>
               </Popover>
+              {dateFilter && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearDate}
+                  className="ml-2"
+                >
+                  Clear
+                </Button>
+              )}
             </div>
           </div>
 
