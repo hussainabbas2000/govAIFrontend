@@ -18,17 +18,11 @@ interface SamGovOpportunity {
   agency: string;
   location: string;
   closingDate: string;
+  NAICS: string
 }
 
 const itemsPerPage = 10;
 
-function TotalListingsLabel({total}: {total: number}) {
-  return (
-    <div className="rounded-full bg-secondary text-secondary-foreground px-4 py-2 font-medium text-sm">
-      Total Listings: {total}
-    </div>
-  );
-}
 
 export default function SamGovOpportunitiesPage() {
   const [samGovOpportunities, setSamGovOpportunities] = useState<
@@ -46,6 +40,9 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Defense',
         location: 'Washington, DC',
         closingDate: '2024-06-30',
+        NAICS: "45210"
+
+        
       },
       {
         id: '2',
@@ -53,6 +50,8 @@ export default function SamGovOpportunitiesPage() {
         agency: 'General Services Administration',
         location: 'San Francisco, CA',
         closingDate: '2024-07-15',
+        NAICS: "45211"
+
       },
       {
         id: '3',
@@ -60,6 +59,7 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Interior',
         location: 'Denver, CO',
         closingDate: '2024-08-01',
+        NAICS: "45212"
       },
       {
         id: '4',
@@ -67,6 +67,8 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Defense',
         location: 'Arlington, VA',
         closingDate: '2024-09-20',
+        NAICS: "45213"
+
       },
       {
         id: '5',
@@ -74,6 +76,8 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Energy',
         location: 'Germantown, MD',
         closingDate: '2024-10-05',
+        NAICS: "45214"
+
       },
       {
         id: '6',
@@ -81,6 +85,7 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Transportation',
         location: 'Washington, DC',
         closingDate: '2024-11-12',
+        NAICS: "45215"
       },
       {
         id: '7',
@@ -88,6 +93,8 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Education',
         location: 'Washington, DC',
         closingDate: '2024-12-01',
+        NAICS: "45216"
+
       },
       {
         id: '8',
@@ -95,6 +102,8 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Commerce',
         location: 'Washington, DC',
         closingDate: '2025-01-15',
+        NAICS: "45217"
+
       },
       {
         id: '9',
@@ -102,6 +111,8 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Treasury',
         location: 'Washington, DC',
         closingDate: '2025-02-28',
+        NAICS: "45218"
+
       },
       {
         id: '10',
@@ -109,6 +120,8 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Justice',
         location: 'Washington, DC',
         closingDate: '2025-03-10',
+        NAICS: "45219"
+
       },
       {
         id: '11',
@@ -116,6 +129,8 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Homeland Security',
         location: 'Washington, DC',
         closingDate: '2025-04-01',
+        NAICS: "45220"
+
       },
       {
         id: '12',
@@ -123,6 +138,8 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Environmental Protection Agency',
         location: 'Washington, DC',
         closingDate: '2025-05-01',
+        NAICS: "45221"
+
       },
     ];
     setSamGovOpportunities(dummyData);
@@ -162,7 +179,9 @@ export default function SamGovOpportunitiesPage() {
         <div className="my-4 flex items-center justify-between">
           <h2 className="text-3xl font-bold">SAM.gov Opportunities</h2>
             {samGovOpportunities && samGovOpportunities.length > 0 && (
-                <TotalListingsLabel total={samGovOpportunities.length} />
+                <div className="rounded-full bg-secondary text-secondary-foreground px-4 py-2 font-medium text-sm">
+                  Total Listings: {samGovOpportunities.length}
+                </div>
             )}
           <div className="flex items-center space-x-2">
             <Label htmlFor="search">Search:</Label>
@@ -185,6 +204,7 @@ export default function SamGovOpportunitiesPage() {
                 <CardDescription>Agency: {opportunity.agency}</CardDescription>
                 <CardDescription>Location: {opportunity.location}</CardDescription>
                 <CardDescription>Closing Date: {opportunity.closingDate}</CardDescription>
+                <CardDescription>NAICS: {opportunity.NAICS}</CardDescription>
                 <Button>View Details</Button>
               </CardContent>
             </Card>

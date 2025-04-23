@@ -30,7 +30,7 @@ body {
     --destructive-foreground: 0 0% 98%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
-    --sidebar-background: 220 14.3% 95.9%;
+    --sidebar-background: 217, 65%, 81%; /*#bfd8ff in HSL*/
     --sidebar-foreground: 222.2 47.4% 11.2%;
     --sidebar-primary: 222.2 47.4% 11.2%;
     --sidebar-primary-foreground: 0 0% 98%;
@@ -79,3 +79,4 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
