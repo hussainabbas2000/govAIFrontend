@@ -44,6 +44,7 @@ export default function SamGovOpportunitiesPage() {
   const [naicsFilter, setNaicsFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+  const [showOnlyOpen, setShowOnlyOpen] = useState(false);
 
   useEffect(() => {
     // Simulate fetching SAM.gov opportunities
@@ -170,12 +171,13 @@ export default function SamGovOpportunitiesPage() {
       !dateFilter ||
       format(dateFilter, 'yyyy-MM-dd') === opportunity.closingDate;
 
-    // Check if the closing date is in the future if no date is selected.
     const isCurrentlyOpen =
       !dateFilter && new Date(opportunity.closingDate) >= new Date();
 
-    // Show listings either if no date is selected and opportunity is open, or if closing date matches selected date.
-    return (matchesSearch && matchesNaics && matchesLocation) && (matchesDate || isCurrentlyOpen);
+    const showOpenListings =
+      !showOnlyOpen || new Date(opportunity.closingDate) >= new Date();
+
+    return (matchesSearch && matchesNaics && matchesLocation && showOpenListings) && (matchesDate || (!dateFilter && showOnlyOpen && isCurrentlyOpen) || (!dateFilter && !showOnlyOpen));
   });
 
   const totalItems = filteredOpportunities?.length || 0;
@@ -292,6 +294,15 @@ export default function SamGovOpportunitiesPage() {
                   
                 </Button>
               )}
+            </div>
+            <div className="mb-2">
+              <Label htmlFor="open">Show Only Open Listings:</Label>
+              <Input
+                id="open"
+                type="checkbox"
+                checked={showOnlyOpen}
+                onChange={(e) => setShowOnlyOpen(e.target.checked)}
+              />
             </div>
           </div>
 
