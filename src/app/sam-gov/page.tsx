@@ -1,6 +1,14 @@
 'use client';
 
 import {useEffect, useState} from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {Button} from '@/components/ui/button';
 
 interface SamGovOpportunity {
   id: string;
@@ -46,14 +54,21 @@ export default function SamGovOpportunitiesPage() {
   return (
     <main className="flex-1 p-4">
       <h2>SAM.gov Opportunities</h2>
-      <ul>
+      <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         {samGovOpportunities.map(opportunity => (
-          <li key={opportunity.id}>
-            {opportunity.title} - {opportunity.agency} ({opportunity.location})
-          </li>
+          <Card key={opportunity.id} className="bg-card text-card-foreground shadow-md">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold">{opportunity.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>Agency: {opportunity.agency}</CardDescription>
+              <CardDescription>Location: {opportunity.location}</CardDescription>
+              <CardDescription>Closing Date: {opportunity.closingDate}</CardDescription>
+              <Button>View Details</Button>
+            </CardContent>
+          </Card>
         ))}
-      </ul>
+      </div>
     </main>
   );
 }
-
