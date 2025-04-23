@@ -137,7 +137,8 @@ export default function SeptaOpportunitiesPage() {
             Next
           </Button>
         </div>
-      </div>
-    </main>
-  );
-}
+       </div>
+     </main>
+   );
+ }
+
