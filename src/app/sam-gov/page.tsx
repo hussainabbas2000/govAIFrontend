@@ -170,17 +170,21 @@ export default function SamGovOpportunitiesPage() {
       !dateFilter ||
       format(dateFilter, 'yyyy-MM-dd') === opportunity.closingDate;
 
-    return matchesSearch && matchesNaics && matchesLocation && matchesDate;
+    // Check if the closing date is in the future if no date is selected.
+    const isCurrentlyOpen =
+      !dateFilter && new Date(opportunity.closingDate) >= new Date();
+
+    // Show listings either if no date is selected and opportunity is open, or if closing date matches selected date.
+    return (matchesSearch && matchesNaics && matchesLocation) && (matchesDate || isCurrentlyOpen);
   });
 
   const totalItems = filteredOpportunities?.length || 0;
-   const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-   const currentOpportunities = filteredOpportunities?.slice(
-     (currentPage - 1) * itemsPerPage,
-     currentPage * itemsPerPage
-   ) || [];
- 
+  const currentOpportunities = filteredOpportunities?.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  ) || [];
 
   const goToPreviousPage = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
@@ -340,4 +344,3 @@ export default function SamGovOpportunitiesPage() {
     </main>
   );
 }
-
