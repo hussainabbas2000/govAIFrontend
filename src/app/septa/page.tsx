@@ -38,8 +38,8 @@ export default function SeptaOpportunitiesPage() {
         // await new Promise(resolve => setTimeout(resolve, 1000));
         setSeptaOpportunities(septaOpportunitiesData);
       } catch (error: any) {
-        console.error('Failed to fetch SEPTA opportunities:', error);
-        setSeptaOpportunities([{error: 'Failed to load SEPTA opportunities'}]);
+        console.error(`Failed to fetch SEPTA opportunities: ${error}`);
+        setSeptaOpportunities([{error: `Failed to load SEPTA opportunities`}]);
       }
     };
 
@@ -80,6 +80,9 @@ export default function SeptaOpportunitiesPage() {
       <div className="container mx-auto max-w-screen-lg">
         <div className="my-4 flex items-center justify-between">
           <h2 className="text-3xl font-bold">SEPTA Opportunities</h2>
+            {septaOpportunities && septaOpportunities.length > 0 && !septaOpportunities[0]?.error && (
+                <Label>Total Listings: {septaOpportunities.length}</Label>
+            )}
           <div className="flex items-center space-x-2">
             <Label htmlFor="search">Search:</Label>
             <Input
