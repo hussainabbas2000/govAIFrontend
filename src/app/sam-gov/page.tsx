@@ -296,13 +296,16 @@ export default function SamGovOpportunitiesPage() {
               )}
             </div>
             <div className="mb-2">
-              <Label htmlFor="open">Show Only Open Listings:</Label>
-              <Input
-                id="open"
-                type="checkbox"
-                checked={showOnlyOpen}
-                onChange={(e) => setShowOnlyOpen(e.target.checked)}
-              />
+              <div className="flex items-center space-x-2">
+                <Input
+                  id="open"
+                  type="checkbox"
+                  checked={showOnlyOpen}
+                  onChange={(e) => setShowOnlyOpen(e.target.checked)}
+                  className="w-4 h-4"  // Adjust the size of the checkbox here
+                />
+                <Label htmlFor="open" className="text-sm">Show Only Open Listings</Label>
+              </div>
             </div>
           </div>
 
