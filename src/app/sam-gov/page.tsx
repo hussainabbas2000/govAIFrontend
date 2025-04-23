@@ -22,7 +22,6 @@ import {Calendar} from '@/components/ui/calendar';
 import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover';
 import {cn} from '@/lib/utils';
 import {format} from 'date-fns';
-import {TotalListingsLabel} from '@/components/ui/total-listings-label';
 
 interface SamGovOpportunity {
   id: string;
@@ -204,7 +203,9 @@ export default function SamGovOpportunitiesPage() {
       <div className="container mx-auto max-w-screen-lg">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-3xl font-bold">SAM.gov Opportunities</h2>
-          <TotalListingsLabel total={samGovOpportunities.length} />
+          <div className="rounded-full bg-secondary text-secondary-foreground px-4 py-2 font-medium text-sm">
+            Total Listings: {samGovOpportunities.length}
+          </div>
         </div>
 
         <div className="flex mb-4">
