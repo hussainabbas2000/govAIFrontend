@@ -22,6 +22,7 @@ import {Calendar} from '@/components/ui/calendar';
 import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover';
 import {cn} from '@/lib/utils';
 import {format} from 'date-fns';
+import {Icons} from '@/components/icons';
 
 interface SamGovOpportunity {
   id: string;
@@ -173,12 +174,13 @@ export default function SamGovOpportunitiesPage() {
   });
 
   const totalItems = filteredOpportunities?.length || 0;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-  const currentOpportunities = filteredOpportunities?.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  ) || [];
+   const currentOpportunities = filteredOpportunities?.slice(
+     (currentPage - 1) * itemsPerPage,
+     currentPage * itemsPerPage
+   ) || [];
+ 
 
   const goToPreviousPage = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
@@ -282,7 +284,8 @@ export default function SamGovOpportunitiesPage() {
                   onClick={handleClearDate}
                   className="ml-2"
                 >
-                  Clear
+                  <Icons.close className="w-4 h-4"/>
+                  
                 </Button>
               )}
             </div>
@@ -337,3 +340,4 @@ export default function SamGovOpportunitiesPage() {
     </main>
   );
 }
+
