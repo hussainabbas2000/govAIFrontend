@@ -13,7 +13,6 @@ import {
   SidebarProvider,
 } from '@/components/ui/sidebar';
 import {Icons} from '@/components/icons';
-import {Input} from '@/components/ui/input';
 import {useRouter} from 'next/navigation';
 
 export default function Home() {
@@ -47,7 +46,7 @@ export default function Home() {
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
-          <Input placeholder="Search..." />
+          
         </SidebarFooter>
       </Sidebar>
       <main className="flex-1 p-4">
@@ -78,3 +77,4 @@ export default function Home() {
     </SidebarProvider>
   );
 }
+
