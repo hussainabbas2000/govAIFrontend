@@ -11,6 +11,18 @@ import {
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Label} from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {Calendar} from '@/components/ui/calendar';
+import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover';
+import {cn} from '@/lib/utils';
+import {format} from 'date-fns';
+import {TotalListingsLabel} from '@/components/ui/total-listings-label';
 
 interface SamGovOpportunity {
   id: string;
@@ -18,11 +30,10 @@ interface SamGovOpportunity {
   agency: string;
   location: string;
   closingDate: string;
-  NAICS: string
+  NAICS: string;
 }
 
 const itemsPerPage = 10;
-
 
 export default function SamGovOpportunitiesPage() {
   const [samGovOpportunities, setSamGovOpportunities] = useState<
@@ -30,6 +41,9 @@ export default function SamGovOpportunitiesPage() {
   >([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [naicsFilter, setNaicsFilter] = useState('');
+  const [locationFilter, setLocationFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     // Simulate fetching SAM.gov opportunities
@@ -40,9 +54,7 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Defense',
         location: 'Washington, DC',
         closingDate: '2024-06-30',
-        NAICS: "45210"
-
-        
+        NAICS: '541511',
       },
       {
         id: '2',
@@ -50,8 +62,7 @@ export default function SamGovOpportunitiesPage() {
         agency: 'General Services Administration',
         location: 'San Francisco, CA',
         closingDate: '2024-07-15',
-        NAICS: "45211"
-
+        NAICS: '236220',
       },
       {
         id: '3',
@@ -59,7 +70,7 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Interior',
         location: 'Denver, CO',
         closingDate: '2024-08-01',
-        NAICS: "45212"
+        NAICS: '453210',
       },
       {
         id: '4',
@@ -67,8 +78,7 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Defense',
         location: 'Arlington, VA',
         closingDate: '2024-09-20',
-        NAICS: "45213"
-
+        NAICS: '541512',
       },
       {
         id: '5',
@@ -76,8 +86,7 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Energy',
         location: 'Germantown, MD',
         closingDate: '2024-10-05',
-        NAICS: "45214"
-
+        NAICS: '541715',
       },
       {
         id: '6',
@@ -85,7 +94,7 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Transportation',
         location: 'Washington, DC',
         closingDate: '2024-11-12',
-        NAICS: "45215"
+        NAICS: '488119',
       },
       {
         id: '7',
@@ -93,8 +102,7 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Education',
         location: 'Washington, DC',
         closingDate: '2024-12-01',
-        NAICS: "45216"
-
+        NAICS: '611710',
       },
       {
         id: '8',
@@ -102,8 +110,7 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Commerce',
         location: 'Washington, DC',
         closingDate: '2025-01-15',
-        NAICS: "45217"
-
+        NAICS: '541611',
       },
       {
         id: '9',
@@ -111,8 +118,7 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Treasury',
         location: 'Washington, DC',
         closingDate: '2025-02-28',
-        NAICS: "45218"
-
+        NAICS: '524210',
       },
       {
         id: '10',
@@ -120,8 +126,7 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Justice',
         location: 'Washington, DC',
         closingDate: '2025-03-10',
-        NAICS: "45219"
-
+        NAICS: '922120',
       },
       {
         id: '11',
@@ -129,8 +134,7 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Department of Homeland Security',
         location: 'Washington, DC',
         closingDate: '2025-04-01',
-        NAICS: "45220"
-
+        NAICS: '561612',
       },
       {
         id: '12',
@@ -138,8 +142,7 @@ export default function SamGovOpportunitiesPage() {
         agency: 'Environmental Protection Agency',
         location: 'Washington, DC',
         closingDate: '2025-05-01',
-        NAICS: "45221"
-
+        NAICS: '541620',
       },
     ];
     setSamGovOpportunities(dummyData);
@@ -151,10 +154,23 @@ export default function SamGovOpportunitiesPage() {
   };
 
   const filteredOpportunities = samGovOpportunities?.filter(opportunity => {
-    return (
+    const matchesSearch =
       opportunity.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            opportunity.agency?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+      opportunity.agency?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesNaics =
+      naicsFilter === '' ||
+      opportunity.NAICS?.toLowerCase().includes(naicsFilter.toLowerCase());
+
+    const matchesLocation =
+      locationFilter === '' ||
+      opportunity.location?.toLowerCase().includes(locationFilter.toLowerCase());
+
+    const matchesDate =
+      !dateFilter ||
+      format(dateFilter, 'yyyy-MM-dd') === opportunity.closingDate;
+
+    return matchesSearch && matchesNaics && matchesLocation && matchesDate;
   });
 
   const totalItems = filteredOpportunities?.length || 0;
@@ -173,43 +189,114 @@ export default function SamGovOpportunitiesPage() {
     setCurrentPage(prev => Math.min(prev + 1, totalPages));
   };
 
+  const handleNaicsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setNaicsFilter(event.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleLocationChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setLocationFilter(event.target.value);
+    setCurrentPage(1);
+  };
+
   return (
     <main className="flex flex-col gap-4 p-4">
       <div className="container mx-auto max-w-screen-lg">
-        <div className="my-4 flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-3xl font-bold">SAM.gov Opportunities</h2>
-            {samGovOpportunities && samGovOpportunities.length > 0 && (
-                <div className="rounded-full bg-secondary text-secondary-foreground px-4 py-2 font-medium text-sm">
-                  Total Listings: {samGovOpportunities.length}
-                </div>
-            )}
-          <div className="flex items-center space-x-2">
-            <Label htmlFor="search">Search:</Label>
-            <Input
-              id="search"
-              type="text"
-              placeholder="Search listings..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-            />
+          <TotalListingsLabel total={samGovOpportunities.length} />
+        </div>
+
+        <div className="flex mb-4">
+          <div className="w-1/4 pr-4">
+            <h3 className="text-lg font-semibold mb-2">Filters</h3>
+            <div className="mb-2">
+              <Label htmlFor="search">Search:</Label>
+              <Input
+                id="search"
+                type="text"
+                placeholder="Search listings..."
+                value={searchQuery}
+                onChange={handleSearchChange}
+              />
+            </div>
+
+            <div className="mb-2">
+              <Label htmlFor="naics">NAICS Code:</Label>
+              <Input
+                id="naics"
+                type="text"
+                placeholder="Filter by NAICS code..."
+                value={naicsFilter}
+                onChange={handleNaicsChange}
+              />
+            </div>
+
+            <div className="mb-2">
+              <Label htmlFor="location">Location:</Label>
+              <Input
+                id="location"
+                type="text"
+                placeholder="Filter by location..."
+                value={locationFilter}
+                onChange={handleLocationChange}
+              />
+            </div>
+            <div className="mb-2">
+              <Label>Closing Date:</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={'outline'}
+                    className={cn(
+                      'w-[240px] justify-start text-left font-normal',
+                      !dateFilter && 'text-muted-foreground'
+                    )}
+                  >
+                    {dateFilter ? (
+                      format(dateFilter, 'yyyy-MM-dd')
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="center" side="bottom">
+                  <Calendar
+                    mode="single"
+                    selected={dateFilter}
+                    onSelect={setDateFilter}
+                    disabled={(date) => date < new Date('2020-01-01')}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          <div className="w-3/4">
+            <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {currentOpportunities.map(opportunity => (
+                <Card key={opportunity.id} className="shadow-md">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold">
+                      {opportunity.title}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription>Agency: {opportunity.agency}</CardDescription>
+                    <CardDescription>Location: {opportunity.location}</CardDescription>
+                    <CardDescription>
+                      Closing Date: {opportunity.closingDate}
+                    </CardDescription>
+                    <CardDescription>NAICS: {opportunity.NAICS}</CardDescription>
+                    <Button>View Details</Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {currentOpportunities.map(opportunity => (
-            <Card key={opportunity.id} className="bg-card text-card-foreground shadow-md">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold">{opportunity.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>Agency: {opportunity.agency}</CardDescription>
-                <CardDescription>Location: {opportunity.location}</CardDescription>
-                <CardDescription>Closing Date: {opportunity.closingDate}</CardDescription>
-                <CardDescription>NAICS: {opportunity.NAICS}</CardDescription>
-                <Button>View Details</Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+
         <div className="flex w-full items-center justify-center space-x-2 p-4">
           <Button
             onClick={goToPreviousPage}
@@ -219,7 +306,9 @@ export default function SamGovOpportunitiesPage() {
           >
             Previous
           </Button>
-          <span>{`Page ${currentPage} of ${totalPages}`}</span>
+          <span>
+            {`Page ${currentPage} of ${totalPages} (Total: ${totalItems} items)`}
+          </span>
           <Button
             onClick={goToNextPage}
             disabled={currentPage === totalPages || totalPages === 0}
@@ -229,7 +318,7 @@ export default function SamGovOpportunitiesPage() {
             Next
           </Button>
         </div>
-       </div>
-     </main>
-   );
- }
+      </div>
+    </main>
+  );
+}
