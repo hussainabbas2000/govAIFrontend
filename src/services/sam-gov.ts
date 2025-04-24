@@ -15,10 +15,6 @@ export interface SamGovOpportunity {
    */
   ncode: string;
   /**
-   * The agency issuing the opportunity.
-   */
-  agency: string;
-  /**
    * The location of the opportunity.
    */
   location: string;
@@ -26,6 +22,13 @@ export interface SamGovOpportunity {
    * The closing date for the opportunity.
    */
   closingDate: string;
+
+  department: string;
+  subtier: string;
+  office: string;
+  type: string;
+  link:string;
+  officeAddress: string;
 }
 
 /**
@@ -37,7 +40,8 @@ export interface SamGovOpportunity {
 export async function getSamGovOpportunities(
     searchCriteria: Record<string, string>
   ): Promise<SamGovOpportunity[]> {
-    const apiKey = process.env.SAM_GOV_API_KEY;
+    const apiKey = process.env.NEXT_PUBLIC_SAM_GOV_API_KEY;
+    
     if (!apiKey) {
       console.error('SAM_GOV_API_KEY is not set in environment variables.');
       return [];
@@ -50,12 +54,12 @@ export async function getSamGovOpportunities(
       postedFrom: getOneYearBackDate(),
       postedTo: getCurrentDate(),
       limit: '1000', // Maximum allowed limit
+      typeOfSetAside: 'SBA'
     };
   
     const params = { ...defaultParams, ...searchCriteria };
     const queryString = new URLSearchParams(params).toString();
     const url = `${baseUrl}?${queryString}`;
-  
     try {
       const response = await fetch(url);
       if (!response.ok) {
@@ -64,17 +68,20 @@ export async function getSamGovOpportunities(
       }
   
       const data = await response.json();
-      if (!data.opportunities || !Array.isArray(data.opportunities)) {
+
+      if (!data.opportunitiesData || !Array.isArray(data.opportunitiesData)) {
         console.error('Invalid data format from SAM.gov API.');
         return [];
       }
-  
+      
       // Filter out expired opportunities
       const currentDate = new Date();
-      const activeOpportunities = data.opportunities.filter((opportunity: any) => {
-        const responseDeadlineToUse = opportunity.responseDeadlineTo;
-  
+      const activeOpportunities = data.opportunitiesData.filter((opportunity: any) => {
+        const responseDeadlineToUse = opportunity.responseDeadLine;
         if (!responseDeadlineToUse) {
+          if (opportunity.type === "Presolicitation"){
+            return true;
+          }
           console.warn(`Opportunity ${opportunity.noticeId} missing response date. It may have expired.`);
           return false;
         }
@@ -82,17 +89,33 @@ export async function getSamGovOpportunities(
         const responseDate = new Date(responseDeadlineToUse);
         return responseDate >= currentDate;
       });
-  
+      
+      
+      activeOpportunities.forEach((opportunity: any) => {
+        const parts = opportunity.fullParentPathName?.split('.') || [];
+      
+        opportunity.department = parts[0] || '';
+        opportunity.subtier = parts[1] || '';
+        opportunity.office = parts[parts.length - 1] || '';
+      });
+      console.log(activeOpportunities)
+     
       // Map to SamGovOpportunity
       const mappedOpportunities: SamGovOpportunity[] = activeOpportunities.map((opportunity: any) => ({
+        
         id: opportunity.noticeId,
         title: opportunity.title,
-        ncode: opportunity.ncode,
-        agency: opportunity.subTierName,
+        ncode: opportunity.naicsCodes,
+        department: opportunity.department,
+        subtier: opportunity.subtier,
+        office: opportunity.office,
         location: opportunity.placeOfPerformance ? opportunity.placeOfPerformance.state : 'N/A',
-        closingDate: opportunity.responseDeadlineTo,
+        closingDate: opportunity.responseDeadLine,
+        type: opportunity.type,
+        link: opportunity.uiLink,
+        officeAddress: `${opportunity.officeAddress.city}, ${opportunity.officeAddress.state}, ${opportunity.officeAddress.countryCode}, ${opportunity.officeAddress.zipcode}`
       }));
-  
+      
       return mappedOpportunities;
     } catch (error: any) {
       console.error('Error fetching data from SAM.gov API:', error);
@@ -112,7 +135,7 @@ export async function getSamGovOpportunities(
   function getOneYearBackDate(): string {
     const today = new Date();
     const mm = String(today.getMonth() + 1).padStart(2, '0'); // January is 0!
-    const dd = String(today.getDate()).padStart(2, '0');
+    const dd = String(today.getDate()+1).padStart(2, '0');
     const yyyy = today.getFullYear() - 1;
     return `${mm}/${dd}/${yyyy}`;
   }

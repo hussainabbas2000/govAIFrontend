@@ -24,7 +24,6 @@ import {cn} from '@/lib/utils';
 import {format} from 'date-fns';
 import {Icons} from '@/components/icons';
 import {SamGovOpportunity, getSamGovOpportunities} from '@/services/sam-gov';
-import {TotalListingsLabel} from '@/components/ui/total-listings-label';
 
 const itemsPerPage = 10;
 
@@ -112,7 +111,7 @@ export default function SamGovOpportunitiesPage() {
   const filteredOpportunities = samGovOpportunities?.filter(opportunity => {
     const matchesSearch =
         opportunity.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        opportunity.agency?.toLowerCase().includes(searchQuery.toLowerCase());
+        opportunity.department?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesNaics =
         ncodeFilter === '' ||
@@ -234,14 +233,18 @@ export default function SamGovOpportunitiesPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <CardDescription>Agency: {opportunity.agency}</CardDescription>
+                    <CardDescription>Department: {opportunity.department}</CardDescription>
+                    <CardDescription>Subtier: {opportunity.subtier}</CardDescription>
+                    <CardDescription>Office: {opportunity.office}</CardDescription>
+                    <CardDescription>Type: {opportunity.type}</CardDescription>
+                    <CardDescription>Office Address: {opportunity.officeAddress}</CardDescription>
                     <CardDescription>Location: {opportunity.location}</CardDescription>
                     <CardDescription>
                       Closing Date: {opportunity.closingDate}
                     </CardDescription>
                     <CardDescription>NAICS: {opportunity.ncode}</CardDescription>
                     <Button asChild>
-                    <a href={`https://sam.gov/opp/${opportunity.id}`} target="_blank" rel="noopener noreferrer">
+                    <a href={`${opportunity.link}`} target="_blank" rel="noopener noreferrer">
                       View Details
                     </a>
                   </Button>

@@ -10,7 +10,7 @@ body {
 
 @layer base {
   :root {
-    --background: 225 20% 100%;
+    --background: 0 0% 100%;
     --foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 56.9%;
@@ -68,7 +68,7 @@ body {
     --sidebar-accent-foreground: 215.4 16.3% 56.9%;
     --sidebar-border: 216 34% 17%;
     --sidebar-ring: 217.2 32.6% 17.5%;
-  }
+   }
 }
 
 @layer base {
@@ -79,4 +79,5 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
 
