@@ -23,15 +23,8 @@ import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover';
 import {cn} from '@/lib/utils';
 import {format} from 'date-fns';
 import {Icons} from '@/components/icons';
-
-interface SamGovOpportunity {
-  id: string;
-  title: string;
-  agency: string;
-  location: string;
-  closingDate: string;
-  NAICS: string;
-}
+import {SamGovOpportunity, getSamGovOpportunities} from '@/services/sam-gov';
+import {TotalListingsLabel} from '@/components/ui/total-listings-label';
 
 const itemsPerPage = 10;
 
@@ -41,149 +34,34 @@ export default function SamGovOpportunitiesPage() {
   >([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
-  const [naicsFilter, setNaicsFilter] = useState('');
+  const [ncodeFilter, setNcodeFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [showOnlyOpen, setShowOnlyOpen] = useState(false);
+  const [totalItems, setTotalItems] = useState(0);
 
   useEffect(() => {
-    // Simulate fetching SAM.gov opportunities
-    const dummyData: SamGovOpportunity[] = [
-      {
-        id: '1',
-        title: 'Software Development Services',
-        agency: 'Department of Defense',
-        location: 'Washington, DC',
-        closingDate: '2024-06-30',
-        NAICS: '541511',
-      },
-      {
-        id: '2',
-        title: 'Construction of New Federal Building',
-        agency: 'General Services Administration',
-        location: 'San Francisco, CA',
-        closingDate: '2024-07-15',
-        NAICS: '236220',
-      },
-      {
-        id: '3',
-        title: 'Supply of Office Equipment',
-        agency: 'Department of Interior',
-        location: 'Denver, CO',
-        closingDate: '2024-08-01',
-        NAICS: '453210',
-      },
-      {
-        id: '4',
-        title: 'SAM.gov Opportunity 4',
-        agency: 'Department of Defense',
-        location: 'Arlington, VA',
-        closingDate: '2024-09-20',
-        NAICS: '541512',
-      },
-      {
-        id: '5',
-        title: 'SAM.gov Opportunity 5',
-        agency: 'Department of Energy',
-        location: 'Germantown, MD',
-        closingDate: '2024-10-05',
-        NAICS: '541715',
-      },
-      {
-        id: '6',
-        title: 'SAM.gov Opportunity 6',
-        agency: 'Department of Transportation',
-        location: 'Washington, DC',
-        closingDate: '2024-11-12',
-        NAICS: '488119',
-      },
-      {
-        id: '7',
-        title: 'SAM.gov Opportunity 7',
-        agency: 'Department of Education',
-        location: 'Washington, DC',
-        closingDate: '2024-12-01',
-        NAICS: '611710',
-      },
-      {
-        id: '8',
-        title: 'SAM.gov Opportunity 8',
-        agency: 'Department of Commerce',
-        location: 'Washington, DC',
-        closingDate: '2025-01-15',
-        NAICS: '541611',
-      },
-      {
-        id: '9',
-        title: 'SAM.gov Opportunity 9',
-        agency: 'Department of Treasury',
-        location: 'Washington, DC',
-        closingDate: '2025-02-28',
-        NAICS: '524210',
-      },
-      {
-        id: '10',
-        title: 'SAM.gov Opportunity 10',
-        agency: 'Department of Justice',
-        location: 'Washington, DC',
-        closingDate: '2025-03-10',
-        NAICS: '922120',
-      },
-      {
-        id: '11',
-        title: 'SAM.gov Opportunity 11',
-        agency: 'Department of Homeland Security',
-        location: 'Washington, DC',
-        closingDate: '2025-04-01',
-        NAICS: '561612',
-      },
-      {
-        id: '12',
-        title: 'SAM.gov Opportunity 12',
-        agency: 'Environmental Protection Agency',
-        location: 'Washington, DC',
-        closingDate: '2025-05-01',
-        NAICS: '541620',
-      },
-    ];
-    setSamGovOpportunities(dummyData);
-  }, []);
+    const fetchSamGovOpportunities = async () => {
+      const searchParams = {
+        title: searchQuery,
+        ncode: ncodeFilter,
+        state: locationFilter,
+      };
 
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(event.target.value);
-    setCurrentPage(1); // Reset to the first page when the search query changes
-  };
+      const opportunities = await getSamGovOpportunities(searchParams);
 
-  const filteredOpportunities = samGovOpportunities?.filter(opportunity => {
-    const matchesSearch =
-      opportunity.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      opportunity.agency?.toLowerCase().includes(searchQuery.toLowerCase());
+      if(opportunities){
+        setSamGovOpportunities(opportunities);
+        setTotalItems(opportunities.length);
+      }
+    };
 
-    const matchesNaics =
-      naicsFilter === '' ||
-      opportunity.NAICS?.toLowerCase().includes(naicsFilter.toLowerCase());
+    fetchSamGovOpportunities();
+  }, [searchQuery, ncodeFilter, locationFilter]);
 
-    const matchesLocation =
-      locationFilter === '' ||
-      opportunity.location?.toLowerCase().includes(locationFilter.toLowerCase());
-
-    const matchesDate =
-      !dateFilter ||
-      format(dateFilter, 'yyyy-MM-dd') === opportunity.closingDate;
-
-    const isCurrentlyOpen =
-      !dateFilter && new Date(opportunity.closingDate) >= new Date();
-
-    const showOpenListings =
-      !showOnlyOpen || new Date(opportunity.closingDate) >= new Date();
-
-    return (matchesSearch && matchesNaics && matchesLocation && showOpenListings) && (matchesDate || (!dateFilter && showOnlyOpen && isCurrentlyOpen) || (!dateFilter && !showOnlyOpen));
-  });
-
-  const totalItems = filteredOpportunities?.length || 0;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-  const currentOpportunities = filteredOpportunities?.slice(
+  const currentOpportunities = samGovOpportunities?.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   ) || [];
@@ -196,8 +74,13 @@ export default function SamGovOpportunitiesPage() {
     setCurrentPage(prev => Math.min(prev + 1, totalPages));
   };
 
-  const handleNaicsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setNaicsFilter(event.target.value);
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleNcodeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setNcodeFilter(event.target.value);
     setCurrentPage(1);
   };
 
@@ -210,13 +93,45 @@ export default function SamGovOpportunitiesPage() {
     setDateFilter(undefined);
   };
 
+  const handleFilter = () => {
+      setCurrentPage(1);
+  };
+
+  const matchesDate = (opportunity: SamGovOpportunity) => {
+    return !dateFilter || format(dateFilter, 'yyyy-MM-dd') === opportunity.closingDate;
+  };
+
+  const isCurrentlyOpen = (opportunity: SamGovOpportunity) => {
+    return !dateFilter && new Date(opportunity.closingDate) >= new Date();
+  };
+
+  const showOpenListings = (opportunity: SamGovOpportunity) => {
+    return !showOnlyOpen || new Date(opportunity.closingDate) >= new Date();
+  };
+
+  const filteredOpportunities = samGovOpportunities?.filter(opportunity => {
+    const matchesSearch =
+        opportunity.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        opportunity.agency?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesNaics =
+        ncodeFilter === '' ||
+        opportunity.ncode?.toLowerCase().includes(ncodeFilter.toLowerCase());
+
+    const matchesLocation =
+        locationFilter === '' ||
+        opportunity.location?.toLowerCase().includes(locationFilter.toLowerCase());
+
+    return matchesSearch && matchesNaics && matchesLocation && (matchesDate(opportunity) || (!dateFilter && showOnlyOpen && isCurrentlyOpen(opportunity)) || (!dateFilter && !showOnlyOpen)) && (showOpenListings(opportunity) || !showOnlyOpen);
+  });
+
   return (
     <main className="flex flex-col gap-4 p-4">
       <div className="container mx-auto max-w-screen-lg">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-3xl font-bold">SAM.gov Opportunities</h2>
           <div className="rounded-full bg-secondary text-secondary-foreground px-4 py-2 font-medium text-sm">
-            Total Listings: {samGovOpportunities.length}
+            Total Listings: {totalItems}
           </div>
         </div>
 
@@ -240,8 +155,8 @@ export default function SamGovOpportunitiesPage() {
                 id="naics"
                 type="text"
                 placeholder="Filter by NAICS code..."
-                value={naicsFilter}
-                onChange={handleNaicsChange}
+                value={ncodeFilter}
+                onChange={handleNcodeChange}
               />
             </div>
 
@@ -255,6 +170,7 @@ export default function SamGovOpportunitiesPage() {
                 onChange={handleLocationChange}
               />
             </div>
+
             <div className="mb-2 flex items-center">
               <Label>Closing Date:</Label>
               <Popover>
@@ -291,11 +207,10 @@ export default function SamGovOpportunitiesPage() {
                   className="ml-2"
                 >
                   <Icons.close className="w-4 h-4"/>
-                  
                 </Button>
               )}
             </div>
-            <div className="mb-2">
+             <div className="mb-2">
               <div className="flex items-center space-x-2">
                 <Input
                   id="open"
@@ -324,8 +239,12 @@ export default function SamGovOpportunitiesPage() {
                     <CardDescription>
                       Closing Date: {opportunity.closingDate}
                     </CardDescription>
-                    <CardDescription>NAICS: {opportunity.NAICS}</CardDescription>
-                    <Button>View Details</Button>
+                    <CardDescription>NAICS: {opportunity.ncode}</CardDescription>
+                    <Button asChild>
+                    <a href={`https://sam.gov/opp/${opportunity.id}`} target="_blank" rel="noopener noreferrer">
+                      View Details
+                    </a>
+                  </Button>
                   </CardContent>
                 </Card>
               ))}
