@@ -10,7 +10,7 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 0 0% 100%; /* Changed to white */
     --foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 56.9%;
@@ -30,14 +30,15 @@ body {
     --destructive-foreground: 0 0% 98%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
-    --sidebar-background: 217, 65%, 81%; /*#bfd8ff in HSL*/
-    --sidebar-foreground: 222.2 47.4% 11.2%;
-    --sidebar-primary: 222.2 47.4% 11.2%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 220 14.3% 95.9%;
-    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
-    --sidebar-border: 214.3 31.8% 91.4%;
-    --sidebar-ring: 222.2 84% 4.9%;
+    /* Sidebar specific colors */
+    --sidebar-background: 217, 65%, 81%; /* #bfd8ff in HSL */
+    --sidebar-foreground: 222.2 47.4% 11.2%; /* Dark text for light blue background */
+    --sidebar-primary: 235, 64%, 30%; /* Keep primary same */
+    --sidebar-primary-foreground: 0 0% 98%; /* White text for primary */
+    --sidebar-accent: 220 14.3% 95.9%; /* Light gray accent */
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%; /* Dark text for accent */
+    --sidebar-border: 214.3 31.8% 91.4%; /* Default border */
+    --sidebar-ring: 222.2 84% 4.9%; /* Default ring */
   }
 
   .dark {
@@ -60,15 +61,16 @@ body {
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --ring: 217.2 32.6% 17.5%;
-    --sidebar-background: 224 71% 4%;
-    --sidebar-foreground: 213 31% 91%;
-    --sidebar-primary: 222.2 47.4% 11.2%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 223 47% 11%;
-    --sidebar-accent-foreground: 215.4 16.3% 56.9%;
-    --sidebar-border: 216 34% 17%;
-    --sidebar-ring: 217.2 32.6% 17.5%;
-   }
+    /* Dark Sidebar specific colors */
+    --sidebar-background: 224 71% 4%; /* Dark background */
+    --sidebar-foreground: 213 31% 91%; /* Light text */
+    --sidebar-primary: 235, 64%, 30%; /* Keep primary same */
+    --sidebar-primary-foreground: 0 0% 98%; /* White text */
+    --sidebar-accent: 223 47% 11%; /* Dark accent */
+    --sidebar-accent-foreground: 213 31% 91%; /* Light text */
+    --sidebar-border: 216 34% 17%; /* Dark border */
+    --sidebar-ring: 217.2 32.6% 17.5%; /* Dark ring */
+  }
 }
 
 @layer base {
@@ -79,5 +81,3 @@ body {
     @apply bg-background text-foreground;
   }
 }
-
-

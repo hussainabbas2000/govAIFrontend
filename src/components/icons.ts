@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -26,9 +27,56 @@ import {
   User,
   X,
   Workflow,
-  Search,
   LayoutDashboard,
+  Briefcase,
+  Building,
+  FileText,
+  LifeBuoy,
+  Link as LinkIcon,
+  Megaphone,
+  TrendingUp,
+  Calendar, // Keep Calendar from lucide
 } from 'lucide-react';
+
+// Define SVG components directly for Search and Logo
+const SearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props} // Spread additional props like className last
+  >
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.3-4.3" />
+  </svg>
+);
+
+const LogoIcon = (props: React.SVGProps<SVGSVGElement>) => (
+ <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props} // Spread additional props like className last
+  >
+   <rect width="7" height="9" x="3" y="3" rx="1" />
+   <rect width="7" height="5" x="14" y="3" rx="1" />
+   <rect width="7" height="9" x="14" y="12" rx="1" />
+   <rect width="7" height="5" x="3" y="16" rx="1" />
+ </svg>
+);
+
 
 const Icons = {
   arrowRight: ArrowRight,
@@ -38,7 +86,6 @@ const Icons = {
   workflow: Workflow,
   close: X,
   copy: Copy,
-  dark: Moon,
   edit: Edit,
   externalLink: ExternalLink,
   file: File,
@@ -50,7 +97,7 @@ const Icons = {
   messageSquare: MessageSquare,
   plus: Plus,
   plusCircle: PlusCircle,
-  search: Search,
+  search: SearchIcon, // Use the SVG component
   server: Server,
   settings: Settings,
   share: Share2,
@@ -58,7 +105,15 @@ const Icons = {
   spinner: Loader2,
   trash: Trash,
   user: User,
-  logo: LayoutDashboard,
+  logo: LogoIcon, // Use the SVG component
+  briefcase: Briefcase,
+  building: Building,
+  fileText: FileText,
+  lifeBuoy: LifeBuoy,
+  link: LinkIcon,
+  megaphone: Megaphone,
+  trendingUp: TrendingUp,
+  calendar: Calendar, // Keep Calendar from lucide
 };
 
-export {Icons};
+export { Icons };
