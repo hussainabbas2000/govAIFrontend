@@ -31,13 +31,13 @@ body {
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
     /* Sidebar specific colors */
-    --sidebar-background: 217, 65%, 81%; /* #bfd8ff in HSL */
-    --sidebar-foreground: 222.2 47.4% 11.2%; /* Dark text for light blue background */
+    --sidebar-background: 210 100% 95%; /* Lightest blue */
+    --sidebar-foreground: 210 40% 10%; /* Dark text for light blue background */
     --sidebar-primary: 235, 64%, 30%; /* Keep primary same */
     --sidebar-primary-foreground: 0 0% 98%; /* White text for primary */
-    --sidebar-accent: 220 14.3% 95.9%; /* Light gray accent */
-    --sidebar-accent-foreground: 222.2 47.4% 11.2%; /* Dark text for accent */
-    --sidebar-border: 214.3 31.8% 91.4%; /* Default border */
+    --sidebar-accent: 210 100% 90%; /* Slightly darker blue accent */
+    --sidebar-accent-foreground: 210 40% 10%; /* Dark text for accent */
+    --sidebar-border: 210 100% 85%; /* Border color based on sidebar */
     --sidebar-ring: 222.2 84% 4.9%; /* Default ring */
   }
 
