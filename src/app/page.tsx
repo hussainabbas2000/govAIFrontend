@@ -5,7 +5,6 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -44,23 +43,33 @@ export default function Home() {
   });
 
   useEffect(() => {
-    const fetchSeptaOpportunities = async () => {
+     const fetchSeptaOpportunities = async () => {
        try {
-         // Fetch the count of listings from the JSON data
-         const response = await fetch('/api/septa'); // Use the Next.js API route
+         const response = await fetch('/api/run-python-script');
          if (!response.ok) {
            console.error(`HTTP error! status: ${response.status}`);
-            try {
-              const errorData = await response.json();
-              setError(`Failed to fetch SEPTA listings: HTTP ${response.status} - ${errorData.error || 'Unknown error'}`);
-            } catch (e) {
-              setError(`Failed to fetch SEPTA listings: HTTP ${response.status} - ${response.statusText}`);
-            }
-            setSeptaListingsCount(0); // Set count to 0 or handle error state appropriately
-            return;
+           try {
+             const errorData = await response.json();
+             setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - ${errorData.error}`);
+           } catch (e) {
+             setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - ${response.statusText}`);
+           }
+           setSeptaListingsCount(0); // Set count to 0 or handle error state appropriately
+           return;
          }
-         const data = await response.json();
-         setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
+          // Assuming the python script updates the JSON file which is then imported
+          // Fetch the count from the potentially updated JSON data
+          // Note: This approach might lead to stale data if the script fails or runs async
+          // A better approach would be to have the API route return the count or data directly.
+         const septaResponse = await fetch('/api/septa'); // Assuming this endpoint reads the JSON
+         if(septaResponse.ok){
+            const data = await septaResponse.json();
+            setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
+         } else {
+            setSeptaListingsCount(0);
+            console.error("Could not fetch SEPTA data after script run");
+         }
+
        } catch (err: any) {
          console.error('Error fetching SEPTA opportunities:', err);
          setError(err.message || 'An unexpected error occurred while fetching SEPTA opportunities.');
@@ -163,9 +172,11 @@ export default function Home() {
           {/* Main Content */}
           <main className="flex-1 p-6 bg-white"> {/* Changed to white */}
             {error && <div className="mb-4 rounded border border-destructive bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4"> {/* Updated grid */}
-              {/* SAM.gov Card */}
-              <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Adjusted span */}
+            {/* Use grid with 4 columns on large screens */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+
+              {/* Section 1: Portals */}
+              <Card className="md:col-span-1 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* SAM.gov Card */}
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-lg font-medium text-primary">SAM.gov</CardTitle>
                    <Building className="h-5 w-5 text-muted-foreground" />
@@ -173,14 +184,14 @@ export default function Home() {
                 <CardContent>
                   <CardDescription>Federal contracting opportunities.</CardDescription>
                   <div className="mt-4 flex items-center justify-between">
-                     <TotalListingsLabel total={20} loading={false} /> {/* Placeholder total */}
+                     {/* Placeholder total, update with actual data */}
+                     <TotalListingsLabel total={100} loading={false} />
                     <Button onClick={() => navigateTo('/sam-gov')} size="sm" variant="outline" className="text-primary border-primary hover:bg-primary/10">View</Button>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* SEPTA Card */}
-              <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Adjusted span */}
+              <Card className="md:col-span-1 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* SEPTA Card */}
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-lg font-medium text-primary">SEPTA</CardTitle>
                   <Briefcase className="h-5 w-5 text-muted-foreground" />
@@ -194,53 +205,8 @@ export default function Home() {
                 </CardContent>
               </Card>
 
-               {/* Recommendations Card */}
-               <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Adjusted span */}
-                   <CardHeader>
-                       <CardTitle>Recommendations</CardTitle>
-                       <CardDescription>Opportunities you might like.</CardDescription>
-                   </CardHeader>
-                   <CardContent className="grid gap-3">
-                       {/* Placeholder recommendations */}
-                       <div className="text-sm border-b pb-2">
-                           <p className="font-medium truncate">Cybersecurity Training Program</p>
-                           <p className="text-xs text-muted-foreground">Dept. of Homeland Security</p>
-                       </div>
-                        <div className="text-sm">
-                           <p className="font-medium truncate">HVAC Maintenance Contract</p>
-                           <p className="text-xs text-muted-foreground">SEPTA</p>
-                       </div>
-                       <Button variant="outline" size="sm" className="mt-2 justify-self-start">View All</Button>
-                   </CardContent>
-               </Card>
-
-                {/* Quick Links Card */}
-                <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Adjusted span */}
-                   <CardHeader>
-                       <CardTitle>Quick Links</CardTitle>
-                   </CardHeader>
-                   <CardContent className="grid gap-2">
-                        {/* Updated Links with Icons */}
-                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
-                         <FilePlus className="mr-2 h-4 w-4" /> New bid entry form
-                       </Button>
-                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
-                         <Database className="mr-2 h-4 w-4" /> Supplier database
-                       </Button>
-                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
-                          <Receipt className="mr-2 h-4 w-4" /> Submit Invoice
-                       </Button>
-                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
-                          <BookTemplate className="mr-2 h-4 w-4" /> Contract Templates
-                       </Button>
-                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
-                         <Globe className="mr-2 h-4 w-4" /> Company Website
-                       </Button>
-                   </CardContent>
-               </Card>
-
-              {/* Action Items Card */}
-              <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg">
+              {/* Section 2: Action Items & Ongoing Bids */}
+              <Card className="md:col-span-1 lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Action Items Card */}
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-lg font-medium text-primary">Action Items</CardTitle>
                   <BellRing className="h-5 w-5 text-muted-foreground" />
@@ -282,46 +248,13 @@ export default function Home() {
                       <span className="font-semibold text-green-600">{actionItems.newBidsFound}</span>
                     </div>
                   )}
-                   {/* Message if no action items */}
                    {actionItems.bidsDueToday === 0 && actionItems.pendingInvoices === 0 && actionItems.bidsToApprove === 0 && actionItems.newBidsFound === 0 && (
                     <p className="text-sm text-muted-foreground italic">No pending action items.</p>
                   )}
                 </CardContent>
               </Card>
 
-               {/* Payments Summary Card */}
-               <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg">
-                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                   <CardTitle className="text-lg font-medium text-primary">Payments Summary</CardTitle>
-                   <CircleDollarSign className="h-5 w-5 text-muted-foreground" />
-                 </CardHeader>
-                 <CardContent className="grid gap-3">
-                   <div className="flex items-center justify-between text-sm border-b pb-2">
-                     <div className="flex items-center gap-2">
-                       <CreditCard className="h-4 w-4 text-orange-500" />
-                       <p className="font-medium">Outstanding</p>
-                     </div>
-                     <span className="font-semibold text-orange-500">${paymentSummary.outstanding.toLocaleString()}</span>
-                   </div>
-                   <div className="flex items-center justify-between text-sm border-b pb-2">
-                     <div className="flex items-center gap-2">
-                       <TrendingUp className="h-4 w-4 text-green-600" />
-                       <p className="font-medium">Net Profit</p>
-                     </div>
-                     <span className="font-semibold text-green-600">${paymentSummary.netProfit.toLocaleString()}</span>
-                   </div>
-                   <div className="flex items-center justify-between text-sm">
-                     <div className="flex items-center gap-2">
-                       <CheckCircle className="h-4 w-4 text-blue-600" />
-                       <p className="font-medium">Paid Invoices</p>
-                     </div>
-                     <span className="font-semibold text-blue-600">{paymentSummary.paidInvoices}</span>
-                   </div>
-                 </CardContent>
-               </Card>
-
-              {/* Ongoing Bids Table */}
-               <Card className="md:col-span-2 lg:col-span-3 xl:col-span-3 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Spans 3 columns */}
+               <Card className="md:col-span-2 lg:col-span-3 xl:col-span-3 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Ongoing Bids Table */}
                  <CardHeader>
                    <CardTitle>Ongoing Bids</CardTitle>
                    <CardDescription>Your current bidding activities.</CardDescription>
@@ -361,9 +294,38 @@ export default function Home() {
                  </CardContent>
                </Card>
 
+              {/* Section 3: Payments Summary & Performance Overview */}
+               <Card className="md:col-span-1 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Payments Summary Card */}
+                 <CardHeader className="flex flex-row items-center justify-between pb-2">
+                   <CardTitle className="text-lg font-medium text-primary">Payments Summary</CardTitle>
+                   <CircleDollarSign className="h-5 w-5 text-muted-foreground" />
+                 </CardHeader>
+                 <CardContent className="grid gap-3">
+                   <div className="flex items-center justify-between text-sm border-b pb-2">
+                     <div className="flex items-center gap-2">
+                       <CreditCard className="h-4 w-4 text-orange-500" />
+                       <p className="font-medium">Outstanding</p>
+                     </div>
+                     <span className="font-semibold text-orange-500">${paymentSummary.outstanding.toLocaleString()}</span>
+                   </div>
+                   <div className="flex items-center justify-between text-sm border-b pb-2">
+                     <div className="flex items-center gap-2">
+                       <TrendingUp className="h-4 w-4 text-green-600" />
+                       <p className="font-medium">Net Profit</p>
+                     </div>
+                     <span className="font-semibold text-green-600">${paymentSummary.netProfit.toLocaleString()}</span>
+                   </div>
+                   <div className="flex items-center justify-between text-sm">
+                     <div className="flex items-center gap-2">
+                       <CheckCircle className="h-4 w-4 text-blue-600" />
+                       <p className="font-medium">Paid Invoices</p>
+                     </div>
+                     <span className="font-semibold text-blue-600">{paymentSummary.paidInvoices}</span>
+                   </div>
+                 </CardContent>
+               </Card>
 
-              {/* Performance Overview */}
-              <Card className="md:col-span-2 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg">
+              <Card className="md:col-span-1 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Performance Overview */}
                 <CardHeader>
                   <CardTitle>Performance Overview (Weekly)</CardTitle>
                   <CardDescription>Key metrics for the past week.</CardDescription>
@@ -420,8 +382,8 @@ export default function Home() {
                 </CardContent>
               </Card>
 
-              {/* Bids by Category Chart Card */}
-              <Card className="md:col-span-2 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Spans 2 columns */}
+              {/* Section 4: Charts */}
+              <Card className="md:col-span-2 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Bids by Category Chart Card */}
                 <CardHeader>
                   <CardTitle>Bids by Category</CardTitle>
                   <CardDescription>Distribution of bids across different categories.</CardDescription>
@@ -431,9 +393,33 @@ export default function Home() {
                 </CardContent>
               </Card>
 
-              {/* Bids by Portal Chart Card */}
-               <Card className="md:col-span-2 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Spans 2 columns */}
+               <Card className="md:col-span-2 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Bids by Portal Chart Card */}
                   <BidsByPortalChart />
+               </Card>
+
+                {/* Quick Links Card - Moved to the end for now, adjust as needed */}
+                <Card className="md:col-span-2 lg:col-span-4 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Quick Links Card */}
+                   <CardHeader>
+                       <CardTitle>Quick Links</CardTitle>
+                   </CardHeader>
+                   <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                        {/* Updated Links with Icons */}
+                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
+                         <FilePlus className="mr-2 h-4 w-4" /> New bid entry form
+                       </Button>
+                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
+                         <Database className="mr-2 h-4 w-4" /> Supplier database
+                       </Button>
+                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
+                          <Receipt className="mr-2 h-4 w-4" /> Submit Invoice
+                       </Button>
+                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
+                          <BookTemplate className="mr-2 h-4 w-4" /> Contract Templates
+                       </Button>
+                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
+                         <Globe className="mr-2 h-4 w-4" /> Company Website
+                       </Button>
+                   </CardContent>
                </Card>
 
             </div>
@@ -448,4 +434,3 @@ export default function Home() {
     </SidebarProvider>
   );
 }
-
