@@ -19,7 +19,7 @@ import { TotalListingsLabel } from '@/components/total-listings-label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe, DollarSign, Percent, Send, Trophy, Layers, CheckCircle, BellRing, Clock, FileCheck, SearchCode } from 'lucide-react'; // Added necessary icons
+import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe, DollarSign, Percent, Send, Trophy, Layers, CheckCircle, BellRing, Clock, FileCheck, SearchCode, CreditCard, CircleDollarSign } from 'lucide-react'; // Added necessary icons
 import { BidsByCategoryChart } from '@/components/dashboard/bids-by-category-chart';
 import { BidsByPortalChart } from '@/components/dashboard/bids-by-portal-chart'; // Import the new chart component
 
@@ -36,27 +36,37 @@ export default function Home() {
     newBidsFound: 8,
   });
 
+  // Dummy data for Payments Summary
+  const [paymentSummary, setPaymentSummary] = useState({
+    outstanding: 12500.00,
+    netProfit: 5800.75,
+    paidInvoices: 42,
+  });
+
   useEffect(() => {
     const fetchSeptaOpportunities = async () => {
-      try {
-        // Assuming the script updates the JSON file, we fetch the data count from the file
-        // const dataResponse = await fetch('/api/septa'); // Use the endpoint that reads the JSON
-        //  if (!dataResponse.ok) {
-        //   console.error(`Failed to fetch SEPTA data count: HTTP ${dataResponse.status}`);
-        //   setError(`Failed to fetch SEPTA data count: HTTP ${dataResponse.status}`);
-        //   setSeptaListingsCount(0); // Placeholder dummy count
-        //   return;
-        //  }
-        //  const data = await dataResponse.json();
-        //  setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
-        setSeptaListingsCount(10); // Use dummy count for now
-
-      } catch (err: any) {
-        console.error('Error fetching SEPTA opportunities:', err);
-        setError(err.message || 'An unexpected error occurred while fetching SEPTA opportunities.');
-        setSeptaListingsCount(0);
-      }
-    };
+       try {
+         // Fetch the count of listings from the JSON data
+         const response = await fetch('/api/septa'); // Use the Next.js API route
+         if (!response.ok) {
+           console.error(`HTTP error! status: ${response.status}`);
+            try {
+              const errorData = await response.json();
+              setError(`Failed to fetch SEPTA listings: HTTP ${response.status} - ${errorData.error || 'Unknown error'}`);
+            } catch (e) {
+              setError(`Failed to fetch SEPTA listings: HTTP ${response.status} - ${response.statusText}`);
+            }
+            setSeptaListingsCount(0); // Set count to 0 or handle error state appropriately
+            return;
+         }
+         const data = await response.json();
+         setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
+       } catch (err: any) {
+         console.error('Error fetching SEPTA opportunities:', err);
+         setError(err.message || 'An unexpected error occurred while fetching SEPTA opportunities.');
+         setSeptaListingsCount(0);
+       }
+     };
 
     fetchSeptaOpportunities();
   }, []);
@@ -279,6 +289,37 @@ export default function Home() {
                 </CardContent>
               </Card>
 
+               {/* Payments Summary Card */}
+               <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg">
+                 <CardHeader className="flex flex-row items-center justify-between pb-2">
+                   <CardTitle className="text-lg font-medium text-primary">Payments Summary</CardTitle>
+                   <CircleDollarSign className="h-5 w-5 text-muted-foreground" />
+                 </CardHeader>
+                 <CardContent className="grid gap-3">
+                   <div className="flex items-center justify-between text-sm border-b pb-2">
+                     <div className="flex items-center gap-2">
+                       <CreditCard className="h-4 w-4 text-orange-500" />
+                       <p className="font-medium">Outstanding</p>
+                     </div>
+                     <span className="font-semibold text-orange-500">${paymentSummary.outstanding.toLocaleString()}</span>
+                   </div>
+                   <div className="flex items-center justify-between text-sm border-b pb-2">
+                     <div className="flex items-center gap-2">
+                       <TrendingUp className="h-4 w-4 text-green-600" />
+                       <p className="font-medium">Net Profit</p>
+                     </div>
+                     <span className="font-semibold text-green-600">${paymentSummary.netProfit.toLocaleString()}</span>
+                   </div>
+                   <div className="flex items-center justify-between text-sm">
+                     <div className="flex items-center gap-2">
+                       <CheckCircle className="h-4 w-4 text-blue-600" />
+                       <p className="font-medium">Paid Invoices</p>
+                     </div>
+                     <span className="font-semibold text-blue-600">{paymentSummary.paidInvoices}</span>
+                   </div>
+                 </CardContent>
+               </Card>
+
               {/* Ongoing Bids Table */}
                <Card className="md:col-span-2 lg:col-span-3 xl:col-span-3 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Spans 3 columns */}
                  <CardHeader>
@@ -407,3 +448,4 @@ export default function Home() {
     </SidebarProvider>
   );
 }
+
