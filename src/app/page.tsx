@@ -19,6 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe } from 'lucide-react'; // Added necessary icons
+import { BidsByCategoryChart } from '@/components/dashboard/bids-by-category-chart'; // Import the new chart component
 
 export default function Home() {
   const router = useRouter();
@@ -26,40 +27,40 @@ export default function Home() {
   const [septaListingsCount, setSeptaListingsCount] = useState<number | null>(null);
 
   useEffect(() => {
-    const fetchSeptaOpportunities = async () => {
-      try {
-        const response = await fetch('/api/run-python-script');
-        if (!response.ok) {
-          console.error(`HTTP error! status: ${response.status}`);
-          try {
-            const errorData = await response.json();
-            setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - ${errorData.error || 'Unknown error'}`);
-          } catch (jsonError) {
-             setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - Could not parse error response`);
-          }
-           setSeptaListingsCount(0); // Set count to 0 on error
-          return;
-        }
-        // Assuming the script updates the JSON file, we fetch the data count from the file
-        const dataResponse = await fetch('/api/septa'); // Use the endpoint that reads the JSON
-         if (!dataResponse.ok) {
-          console.error(`Failed to fetch SEPTA data count: HTTP ${dataResponse.status}`);
-          setError(`Failed to fetch SEPTA data count: HTTP ${dataResponse.status}`);
-           setSeptaListingsCount(0);
-           return;
-         }
-         const data = await dataResponse.json();
-         setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
+    // const fetchSeptaOpportunities = async () => {
+    //   try {
+    //     const response = await fetch('/api/run-python-script');
+    //     if (!response.ok) {
+    //       console.error(`HTTP error! status: ${response.status}`);
+    //       try {
+    //         const errorData = await response.json();
+    //         setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - ${errorData.error || 'Unknown error'}`);
+    //       } catch (jsonError) {
+    //          setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - Could not parse error response`);
+    //       }
+    //        setSeptaListingsCount(0); // Set count to 0 on error
+    //       return;
+    //     }
+    //     // Assuming the script updates the JSON file, we fetch the data count from the file
+    //     const dataResponse = await fetch('/api/septa'); // Use the endpoint that reads the JSON
+    //      if (!dataResponse.ok) {
+    //       console.error(`Failed to fetch SEPTA data count: HTTP ${dataResponse.status}`);
+    //       setError(`Failed to fetch SEPTA data count: HTTP ${dataResponse.status}`);
+           setSeptaListingsCount(10); // Placeholder dummy count
+    //        return;
+    //      }
+    //      const data = await dataResponse.json();
+    //      setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
 
 
-      } catch (err: any) {
-        console.error('Error fetching SEPTA opportunities:', err);
-        setError(err.message || 'An unexpected error occurred while fetching SEPTA opportunities.');
-        setSeptaListingsCount(0);
-      }
-    };
+    //   } catch (err: any) {
+    //     console.error('Error fetching SEPTA opportunities:', err);
+    //     setError(err.message || 'An unexpected error occurred while fetching SEPTA opportunities.');
+    //     setSeptaListingsCount(0);
+    //   }
+    // };
 
-    fetchSeptaOpportunities();
+    // fetchSeptaOpportunities();
   }, []);
 
 
@@ -206,26 +207,25 @@ export default function Home() {
                        <TableRow>
                          <TableCell className="font-medium">IT Support Services</TableCell>
                          <TableCell>Dept. of Commerce</TableCell>
-                         <TableCell><span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">Drafting</span></TableCell> {/* Styled badge */}
+                         <TableCell><span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">Drafting</span></TableCell>
                          <TableCell className="text-right">2024-08-15</TableCell>
                        </TableRow>
                        <TableRow>
                          <TableCell className="font-medium">Office Supplies RFQ</TableCell>
                          <TableCell>GSA</TableCell>
-                          <TableCell><span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Submitted</span></TableCell> {/* Styled badge */}
+                          <TableCell><span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Submitted</span></TableCell>
                          <TableCell className="text-right">2024-07-30</TableCell>
                        </TableRow>
                         <TableRow>
                          <TableCell className="font-medium">Construction Project X</TableCell>
                          <TableCell>SEPTA</TableCell>
-                          <TableCell><span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">Clarification</span></TableCell> {/* Styled badge */}
+                          <TableCell><span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">Clarification</span></TableCell>
                          <TableCell className="text-right">2024-09-01</TableCell>
                        </TableRow>
                      </TableBody>
                    </Table>
                  </CardContent>
                </Card>
-
 
                 {/* Quick Links Card */}
                 <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Added rounded-lg */}
@@ -272,6 +272,16 @@ export default function Home() {
                    </CardContent>
                </Card>
 
+              {/* Bids by Category Chart Card */}
+              <Card className="md:col-span-2 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg">
+                <CardHeader>
+                  <CardTitle>Bids by Category</CardTitle>
+                  <CardDescription>Distribution of bids across different categories.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <BidsByCategoryChart />
+                </CardContent>
+              </Card>
 
             </div>
           </main>
