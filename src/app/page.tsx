@@ -19,7 +19,7 @@ import { TotalListingsLabel } from '@/components/total-listings-label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe, DollarSign, Percent, Send, Trophy, Layers, CheckCircle } from 'lucide-react'; // Added necessary icons
+import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe, DollarSign, Percent, Send, Trophy, Layers, CheckCircle, BellRing, Clock, FileCheck, SearchCode } from 'lucide-react'; // Added necessary icons
 import { BidsByCategoryChart } from '@/components/dashboard/bids-by-category-chart';
 import { BidsByPortalChart } from '@/components/dashboard/bids-by-portal-chart'; // Import the new chart component
 
@@ -27,6 +27,14 @@ export default function Home() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [septaListingsCount, setSeptaListingsCount] = useState<number | null>(null);
+
+  // Dummy data for Action Items - replace with actual data fetching later
+  const [actionItems, setActionItems] = useState({
+    bidsDueToday: 3,
+    pendingInvoices: 5,
+    bidsToApprove: 2,
+    newBidsFound: 8,
+  });
 
   useEffect(() => {
     const fetchSeptaOpportunities = async () => {
@@ -221,8 +229,58 @@ export default function Home() {
                    </CardContent>
                </Card>
 
+              {/* Action Items Card */}
+              <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-lg font-medium text-primary">Action Items</CardTitle>
+                  <BellRing className="h-5 w-5 text-muted-foreground" />
+                </CardHeader>
+                <CardContent className="grid gap-3">
+                  {actionItems.bidsDueToday > 0 && (
+                    <div className="flex items-center justify-between text-sm border-b pb-2">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-destructive" />
+                        <p className="font-medium">Bids due today</p>
+                      </div>
+                      <span className="font-semibold text-destructive">{actionItems.bidsDueToday}</span>
+                    </div>
+                  )}
+                  {actionItems.pendingInvoices > 0 && (
+                    <div className="flex items-center justify-between text-sm border-b pb-2">
+                       <div className="flex items-center gap-2">
+                        <Receipt className="h-4 w-4 text-yellow-600" />
+                        <p className="font-medium">Pending Invoices</p>
+                       </div>
+                      <span className="font-semibold text-yellow-600">{actionItems.pendingInvoices}</span>
+                    </div>
+                  )}
+                  {actionItems.bidsToApprove > 0 && (
+                    <div className="flex items-center justify-between text-sm border-b pb-2">
+                       <div className="flex items-center gap-2">
+                        <FileCheck className="h-4 w-4 text-blue-600" />
+                        <p className="font-medium">Bids to approve</p>
+                       </div>
+                      <span className="font-semibold text-blue-600">{actionItems.bidsToApprove}</span>
+                    </div>
+                  )}
+                  {actionItems.newBidsFound > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                       <SearchCode className="h-4 w-4 text-green-600" />
+                       <p className="font-medium">New bids found</p>
+                      </div>
+                      <span className="font-semibold text-green-600">{actionItems.newBidsFound}</span>
+                    </div>
+                  )}
+                   {/* Message if no action items */}
+                   {actionItems.bidsDueToday === 0 && actionItems.pendingInvoices === 0 && actionItems.bidsToApprove === 0 && actionItems.newBidsFound === 0 && (
+                    <p className="text-sm text-muted-foreground italic">No pending action items.</p>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Ongoing Bids Table */}
-               <Card className="md:col-span-2 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Spans 2 columns */}
+               <Card className="md:col-span-2 lg:col-span-3 xl:col-span-3 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Spans 3 columns */}
                  <CardHeader>
                    <CardTitle>Ongoing Bids</CardTitle>
                    <CardDescription>Your current bidding activities.</CardDescription>
@@ -349,4 +407,3 @@ export default function Home() {
     </SidebarProvider>
   );
 }
-
