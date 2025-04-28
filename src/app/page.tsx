@@ -37,7 +37,7 @@ export default function Home() {
           } catch (jsonError) {
              setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - Could not parse error response`);
           }
-          setSeptaListingsCount(0); // Set count to 0 on error
+           setSeptaListingsCount(0); // Set count to 0 on error
           return;
         }
         // Assuming the script updates the JSON file, we fetch the data count from the file
@@ -233,10 +233,11 @@ export default function Home() {
                        <CardTitle>Quick Links</CardTitle>
                    </CardHeader>
                    <CardContent className="grid gap-2">
-                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary" onClick={() => {/* Link action */} }>My Profile</Button>
-                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary" onClick={() => {/* Link action */} }>Saved Searches</Button>
-                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary" onClick={() => {/* Link action */} }>Notifications Settings</Button>
-                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary" onClick={() => {/* Link action */} }>Help Center</Button>
+                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary" onClick={() => {/* Link action */} }>New bid entry form</Button>
+                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary" onClick={() => {/* Link action */} }>Supplier database</Button>
+                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary" onClick={() => {/* Link action */} }>Submit Invoice</Button>
+                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary" onClick={() => {/* Link action */} }>Contract Templates</Button>
+                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary" onClick={() => {/* Link action */} }>Company Website</Button>
                    </CardContent>
                </Card>
 
