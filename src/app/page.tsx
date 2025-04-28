@@ -19,7 +19,7 @@ import { TotalListingsLabel } from '@/components/total-listings-label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe } from 'lucide-react'; // Added necessary icons
+import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe, DollarSign, Percent, Send, Trophy, Layers, CheckCircle } from 'lucide-react'; // Added necessary icons
 import { BidsByCategoryChart } from '@/components/dashboard/bids-by-category-chart';
 import { BidsByPortalChart } from '@/components/dashboard/bids-by-portal-chart'; // Import the new chart component
 
@@ -31,29 +31,17 @@ export default function Home() {
   useEffect(() => {
     const fetchSeptaOpportunities = async () => {
       try {
-        const response = await fetch('/api/run-python-script');
-        if (!response.ok) {
-          console.error(`HTTP error! status: ${response.status}`);
-          try {
-            const errorData = await response.json();
-            setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - ${errorData.error || 'Unknown error'}`);
-          } catch (jsonError) {
-             setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - Could not parse error response`);
-          }
-           setSeptaListingsCount(0); // Set count to 0 on error
-          return;
-        }
         // Assuming the script updates the JSON file, we fetch the data count from the file
-        const dataResponse = await fetch('/api/septa'); // Use the endpoint that reads the JSON
-         if (!dataResponse.ok) {
-          console.error(`Failed to fetch SEPTA data count: HTTP ${dataResponse.status}`);
-          setError(`Failed to fetch SEPTA data count: HTTP ${dataResponse.status}`);
-          setSeptaListingsCount(10); // Placeholder dummy count
-          return;
-         }
-         const data = await dataResponse.json();
-         setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
-
+        // const dataResponse = await fetch('/api/septa'); // Use the endpoint that reads the JSON
+        //  if (!dataResponse.ok) {
+        //   console.error(`Failed to fetch SEPTA data count: HTTP ${dataResponse.status}`);
+        //   setError(`Failed to fetch SEPTA data count: HTTP ${dataResponse.status}`);
+        //   setSeptaListingsCount(0); // Placeholder dummy count
+        //   return;
+        //  }
+        //  const data = await dataResponse.json();
+        //  setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
+        setSeptaListingsCount(10); // Use dummy count for now
 
       } catch (err: any) {
         console.error('Error fetching SEPTA opportunities:', err);
@@ -274,6 +262,64 @@ export default function Home() {
                  </CardContent>
                </Card>
 
+
+              {/* Performance Overview */}
+              <Card className="md:col-span-2 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg">
+                <CardHeader>
+                  <CardTitle>Performance Overview (Weekly)</CardTitle>
+                  <CardDescription>Key metrics for the past week.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {/* Metric Card: Revenue */}
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <DollarSign className="h-6 w-6 text-primary mt-1" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Revenue from Bids</p>
+                      <p className="text-xl font-semibold">$15,231.89</p>
+                    </div>
+                  </div>
+                  {/* Metric Card: Average Profit */}
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <Percent className="h-6 w-6 text-primary mt-1" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Average Profit</p>
+                      <p className="text-xl font-semibold">23.5%</p>
+                    </div>
+                  </div>
+                  {/* Metric Card: Submitted Bid Value */}
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <Send className="h-6 w-6 text-primary mt-1" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Submitted Bid Value</p>
+                      <p className="text-xl font-semibold">$65,890.50</p>
+                    </div>
+                  </div>
+                  {/* Metric Card: Win Rate */}
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <Trophy className="h-6 w-6 text-primary mt-1" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Win Rate</p>
+                      <p className="text-xl font-semibold">65%</p>
+                    </div>
+                  </div>
+                  {/* Metric Card: Total Bids Submitted */}
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <Layers className="h-6 w-6 text-primary mt-1" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Total Bids Submitted</p>
+                      <p className="text-xl font-semibold">25</p>
+                    </div>
+                  </div>
+                  {/* Metric Card: Bids Won */}
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <CheckCircle className="h-6 w-6 text-primary mt-1" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Bids Won</p>
+                      <p className="text-xl font-semibold">16</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Bids by Category Chart Card */}
               <Card className="md:col-span-2 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Spans 2 columns */}
