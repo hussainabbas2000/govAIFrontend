@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -18,7 +19,7 @@ import { TotalListingsLabel } from '@/components/total-listings-label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe, DollarSign, Percent, Send, Trophy, Layers, CheckCircle, BellRing, Clock, FileCheck, SearchCode, CreditCard, CircleDollarSign } from 'lucide-react'; // Added necessary icons
+import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe, DollarSign, Percent, Send, Trophy, Layers, CheckCircle, BellRing, Clock, FileCheck, SearchCode, CreditCard, CircleDollarSign, Lightbulb } from 'lucide-react'; // Added necessary icons
 import { BidsByCategoryChart } from '@/components/dashboard/bids-by-category-chart';
 import { BidsByPortalChart } from '@/components/dashboard/bids-by-portal-chart'; // Import the new chart component
 
@@ -42,42 +43,50 @@ export default function Home() {
     paidInvoices: 42,
   });
 
+  // Dummy data for Recommendations
+  const [recommendations, setRecommendations] = useState([
+      "Consider bidding on IT Support Services (Dept. of Commerce)",
+      "Explore partnership with 'ABC Supplies' for office needs.",
+      "Review pricing strategy for construction bids based on recent wins/losses.",
+  ]);
+
+
   useEffect(() => {
-     const fetchSeptaOpportunities = async () => {
-       try {
-         const response = await fetch('/api/run-python-script');
-         if (!response.ok) {
-           console.error(`HTTP error! status: ${response.status}`);
-           try {
-             const errorData = await response.json();
-             setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - ${errorData.error}`);
-           } catch (e) {
-             setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - ${response.statusText}`);
-           }
-           setSeptaListingsCount(0); // Set count to 0 or handle error state appropriately
-           return;
-         }
-          // Assuming the python script updates the JSON file which is then imported
-          // Fetch the count from the potentially updated JSON data
-          // Note: This approach might lead to stale data if the script fails or runs async
-          // A better approach would be to have the API route return the count or data directly.
-         const septaResponse = await fetch('/api/septa'); // Assuming this endpoint reads the JSON
-         if(septaResponse.ok){
-            const data = await septaResponse.json();
-            setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
-         } else {
-            setSeptaListingsCount(0);
-            console.error("Could not fetch SEPTA data after script run");
-         }
+    //  const fetchSeptaOpportunities = async () => {
+    //    try {
+    //      const response = await fetch('/api/run-python-script');
+    //      if (!response.ok) {
+    //        console.error(`HTTP error! status: ${response.status}`);
+    //        try {
+    //          const errorData = await response.json();
+    //          setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - ${errorData.error}`);
+    //        } catch (e) {
+    //          setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - ${response.statusText}`);
+    //        }
+    //        setSeptaListingsCount(0); // Set count to 0 or handle error state appropriately
+    //        return;
+    //      }
+    //       // Assuming the python script updates the JSON file which is then imported
+    //       // Fetch the count from the potentially updated JSON data
+    //       // Note: This approach might lead to stale data if the script fails or runs async
+    //       // A better approach would be to have the API route return the count or data directly.
+    //      const septaResponse = await fetch('/api/septa'); // Assuming this endpoint reads the JSON
+    //      if(septaResponse.ok){
+    //         const data = await septaResponse.json();
+    //         setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
+    //      } else {
+            setSeptaListingsCount(10);
+    //         console.error("Could not fetch SEPTA data after script run");
+    //      }
 
-       } catch (err: any) {
-         console.error('Error fetching SEPTA opportunities:', err);
-         setError(err.message || 'An unexpected error occurred while fetching SEPTA opportunities.');
-         setSeptaListingsCount(0);
-       }
-     };
+    //    } catch (err: any) {
+    //      console.error('Error fetching SEPTA opportunities:', err);
+    //      setError(err.message || 'An unexpected error occurred while fetching SEPTA opportunities.');
+    //      setSeptaListingsCount(0);
+    //    }
+    //  };
 
-    fetchSeptaOpportunities();
+    // fetchSeptaOpportunities();
   }, []);
 
 
@@ -176,7 +185,7 @@ export default function Home() {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
 
               {/* Section 1: Portals */}
-              <Card className="md:col-span-1 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* SAM.gov Card */}
+              <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* SAM.gov Card */}
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-lg font-medium text-primary">SAM.gov</CardTitle>
                    <Building className="h-5 w-5 text-muted-foreground" />
@@ -191,7 +200,7 @@ export default function Home() {
                 </CardContent>
               </Card>
 
-              <Card className="md:col-span-1 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* SEPTA Card */}
+              <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* SEPTA Card */}
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-lg font-medium text-primary">SEPTA</CardTitle>
                   <Briefcase className="h-5 w-5 text-muted-foreground" />
@@ -206,7 +215,7 @@ export default function Home() {
               </Card>
 
               {/* Section 2: Action Items & Ongoing Bids */}
-              <Card className="md:col-span-1 lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Action Items Card */}
+              <Card className="lg:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Action Items Card */}
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-lg font-medium text-primary">Action Items</CardTitle>
                   <BellRing className="h-5 w-5 text-muted-foreground" />
@@ -254,7 +263,7 @@ export default function Home() {
                 </CardContent>
               </Card>
 
-               <Card className="md:col-span-2 lg:col-span-3 xl:col-span-3 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Ongoing Bids Table */}
+               <Card className="lg:col-span-3 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Ongoing Bids Table */}
                  <CardHeader>
                    <CardTitle>Ongoing Bids</CardTitle>
                    <CardDescription>Your current bidding activities.</CardDescription>
@@ -289,13 +298,18 @@ export default function Home() {
                           <TableCell><span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">Clarification</span></TableCell>
                          <TableCell className="text-right">2024-09-01</TableCell>
                        </TableRow>
+                       {/* Add more rows as needed */}
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-muted-foreground italic">No ongoing bids</TableCell>
+                        </TableRow>
                      </TableBody>
                    </Table>
+                   <Button variant="outline" size="sm" className="mt-4 w-full">View All Ongoing Bids</Button>
                  </CardContent>
                </Card>
 
               {/* Section 3: Payments Summary & Performance Overview */}
-               <Card className="md:col-span-1 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Payments Summary Card */}
+               <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Payments Summary Card */}
                  <CardHeader className="flex flex-row items-center justify-between pb-2">
                    <CardTitle className="text-lg font-medium text-primary">Payments Summary</CardTitle>
                    <CircleDollarSign className="h-5 w-5 text-muted-foreground" />
@@ -325,7 +339,7 @@ export default function Home() {
                  </CardContent>
                </Card>
 
-              <Card className="md:col-span-1 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Performance Overview */}
+              <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Performance Overview */}
                 <CardHeader>
                   <CardTitle>Performance Overview (Weekly)</CardTitle>
                   <CardDescription>Key metrics for the past week.</CardDescription>
@@ -383,7 +397,7 @@ export default function Home() {
               </Card>
 
               {/* Section 4: Charts */}
-              <Card className="md:col-span-2 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Bids by Category Chart Card */}
+              <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Bids by Category Chart Card */}
                 <CardHeader>
                   <CardTitle>Bids by Category</CardTitle>
                   <CardDescription>Distribution of bids across different categories.</CardDescription>
@@ -393,16 +407,16 @@ export default function Home() {
                 </CardContent>
               </Card>
 
-               <Card className="md:col-span-2 lg:col-span-2 xl:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Bids by Portal Chart Card */}
+               <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Bids by Portal Chart Card */}
                   <BidsByPortalChart />
                </Card>
 
-                {/* Quick Links Card - Moved to the end for now, adjust as needed */}
-                <Card className="md:col-span-2 lg:col-span-4 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Quick Links Card */}
+                {/* Section 5: Quick Links & Recommendations */}
+                <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Quick Links Card */}
                    <CardHeader>
                        <CardTitle>Quick Links</CardTitle>
                    </CardHeader>
-                   <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Updated Links with Icons */}
                        <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
                          <FilePlus className="mr-2 h-4 w-4" /> New bid entry form
@@ -420,6 +434,25 @@ export default function Home() {
                          <Globe className="mr-2 h-4 w-4" /> Company Website
                        </Button>
                    </CardContent>
+               </Card>
+
+               <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Recommendations Card */}
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-lg font-medium text-primary">Recommendations</CardTitle>
+                    <Lightbulb className="h-5 w-5 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                     {recommendations.length > 0 ? (
+                        <ul className="list-disc pl-5 space-y-2 text-sm">
+                           {recommendations.map((rec, index) => (
+                              <li key={index}>{rec}</li>
+                           ))}
+                        </ul>
+                     ) : (
+                        <p className="text-sm text-muted-foreground italic">No recommendations available.</p>
+                     )}
+                     <Button variant="outline" size="sm" className="mt-4 w-full">View All Recommendations</Button>
+                  </CardContent>
                </Card>
 
             </div>
