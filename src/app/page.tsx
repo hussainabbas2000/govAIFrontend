@@ -18,7 +18,7 @@ import { TotalListingsLabel } from '@/components/total-listings-label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp } from 'lucide-react';
+import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe } from 'lucide-react'; // Added necessary icons
 
 export default function Home() {
   const router = useRouter();
@@ -152,41 +152,41 @@ export default function Home() {
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-6 bg-gray-50"> {/* Added light gray background */}
             {error && <div className="mb-4 rounded border border-destructive bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {/* SAM.gov Card */}
-              <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200">
+              <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Added rounded-lg */}
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-lg font-medium">SAM.gov</CardTitle>
+                  <CardTitle className="text-lg font-medium text-primary">SAM.gov</CardTitle> {/* Added text-primary */}
                    <Building className="h-5 w-5 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <CardDescription>Federal contracting opportunities.</CardDescription>
                   <div className="mt-4 flex items-center justify-between">
-                     <TotalListingsLabel total={20} /> {/* Placeholder total */}
-                    <Button onClick={() => navigateTo('/sam-gov')} size="sm">View</Button>
+                     <TotalListingsLabel total={20} loading={false} /> {/* Placeholder total */}
+                    <Button onClick={() => navigateTo('/sam-gov')} size="sm" variant="outline" className="text-primary border-primary hover:bg-primary/10">View</Button> {/* Styled button */}
                   </div>
                 </CardContent>
               </Card>
 
               {/* SEPTA Card */}
-              <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200">
+              <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Added rounded-lg */}
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-lg font-medium">SEPTA</CardTitle>
+                  <CardTitle className="text-lg font-medium text-primary">SEPTA</CardTitle> {/* Added text-primary */}
                   <Briefcase className="h-5 w-5 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <CardDescription>Local transit authority opportunities.</CardDescription>
                    <div className="mt-4 flex items-center justify-between">
-                     <TotalListingsLabel total={septaListingsCount ?? 0} loading={septaListingsCount === null} />
-                    <Button onClick={() => navigateTo('/septa')} size="sm">View</Button>
+                     <TotalListingsLabel total={septaListingsCount} loading={septaListingsCount === null} />
+                    <Button onClick={() => navigateTo('/septa')} size="sm" variant="outline" className="text-primary border-primary hover:bg-primary/10">View</Button> {/* Styled button */}
                   </div>
                 </CardContent>
               </Card>
 
               {/* Ongoing Bids Table */}
-               <Card className="md:col-span-2 lg:col-span-3 xl:col-span-2 row-span-2 hover:shadow-lg transition-shadow duration-200">
+               <Card className="md:col-span-2 lg:col-span-3 xl:col-span-2 row-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Added rounded-lg */}
                  <CardHeader>
                    <CardTitle>Ongoing Bids</CardTitle>
                    <CardDescription>Your current bidding activities.</CardDescription>
@@ -206,19 +206,19 @@ export default function Home() {
                        <TableRow>
                          <TableCell className="font-medium">IT Support Services</TableCell>
                          <TableCell>Dept. of Commerce</TableCell>
-                         <TableCell><span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800">Drafting</span></TableCell>
+                         <TableCell><span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">Drafting</span></TableCell> {/* Styled badge */}
                          <TableCell className="text-right">2024-08-15</TableCell>
                        </TableRow>
                        <TableRow>
                          <TableCell className="font-medium">Office Supplies RFQ</TableCell>
                          <TableCell>GSA</TableCell>
-                          <TableCell><span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">Submitted</span></TableCell>
+                          <TableCell><span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Submitted</span></TableCell> {/* Styled badge */}
                          <TableCell className="text-right">2024-07-30</TableCell>
                        </TableRow>
                         <TableRow>
                          <TableCell className="font-medium">Construction Project X</TableCell>
                          <TableCell>SEPTA</TableCell>
-                          <TableCell><span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">Clarification</span></TableCell>
+                          <TableCell><span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">Clarification</span></TableCell> {/* Styled badge */}
                          <TableCell className="text-right">2024-09-01</TableCell>
                        </TableRow>
                      </TableBody>
@@ -228,28 +228,39 @@ export default function Home() {
 
 
                 {/* Quick Links Card */}
-                <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200">
+                <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Added rounded-lg */}
                    <CardHeader>
                        <CardTitle>Quick Links</CardTitle>
                    </CardHeader>
                    <CardContent className="grid gap-2">
-                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary" onClick={() => {/* Link action */} }>New bid entry form</Button>
-                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary" onClick={() => {/* Link action */} }>Supplier database</Button>
-                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary" onClick={() => {/* Link action */} }>Submit Invoice</Button>
-                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary" onClick={() => {/* Link action */} }>Contract Templates</Button>
-                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary" onClick={() => {/* Link action */} }>Company Website</Button>
+                        {/* Updated Links with Icons */}
+                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
+                         <FilePlus className="mr-2 h-4 w-4" /> New bid entry form
+                       </Button>
+                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
+                         <Database className="mr-2 h-4 w-4" /> Supplier database
+                       </Button>
+                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
+                          <Receipt className="mr-2 h-4 w-4" /> Submit Invoice
+                       </Button>
+                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
+                          <BookTemplate className="mr-2 h-4 w-4" /> Contract Templates
+                       </Button>
+                       <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
+                         <Globe className="mr-2 h-4 w-4" /> Company Website
+                       </Button>
                    </CardContent>
                </Card>
 
                {/* Recommendations Card */}
-               <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200">
+               <Card className="lg:col-span-1 xl:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Added rounded-lg */}
                    <CardHeader>
                        <CardTitle>Recommendations</CardTitle>
                        <CardDescription>Opportunities you might like.</CardDescription>
                    </CardHeader>
                    <CardContent className="grid gap-3">
                        {/* Placeholder recommendations */}
-                       <div className="text-sm">
+                       <div className="text-sm border-b pb-2"> {/* Added border */}
                            <p className="font-medium truncate">Cybersecurity Training Program</p>
                            <p className="text-xs text-muted-foreground">Dept. of Homeland Security</p>
                        </div>
@@ -257,7 +268,7 @@ export default function Home() {
                            <p className="font-medium truncate">HVAC Maintenance Contract</p>
                            <p className="text-xs text-muted-foreground">SEPTA</p>
                        </div>
-                       <Button variant="outline" size="sm" className="mt-2">View All</Button>
+                       <Button variant="outline" size="sm" className="mt-2 justify-self-start">View All</Button> {/* Aligned button */}
                    </CardContent>
                </Card>
 
