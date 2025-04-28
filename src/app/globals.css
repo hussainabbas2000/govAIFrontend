@@ -39,11 +39,11 @@ body {
     --chart-5: 280 70% 60%; /* Purple */
 
     /* Sidebar specific colors */
-    --sidebar-background: 210 100% 85%; /* Lightest blue (#bfd8ff) */
-    --sidebar-foreground: 222.2 47.4% 11.2%; /* Dark text for light blue background */
+    --sidebar-background: 0 100% 85%; /* Lightest blue (#bfd8ff) */
+    --sidebar-foreground: 0 0% 100%; /* Dark text for light blue background */
     --sidebar-primary: 235, 64%, 30%; /* Keep primary same */
     --sidebar-primary-foreground: 0 0% 98%; /* White text for primary */
-    --sidebar-accent: 210 100% 75%; /* Slightly darker blue accent */
+    --sidebar-accent: 139 4% 79%; /* Slightly darker blue accent */
     --sidebar-accent-foreground: 222.2 47.4% 11.2%; /* Dark text for accent */
     --sidebar-border: 210 100% 80%; /* Border color based on sidebar */
     --sidebar-ring: 222.2 84% 4.9%; /* Default ring */

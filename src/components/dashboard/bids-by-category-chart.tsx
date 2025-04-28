@@ -37,27 +37,6 @@ const chartConfig = {
 // Calculate total bids for percentage calculation
 const totalBids = chartData.reduce((acc, curr) => acc + curr.bids, 0);
 
-// Custom formatter for the tooltip content
-const customTooltipFormatter = (value: number, name: string, props: any): React.ReactNode => {
-    // Get the category name from the payload
-   const category = props?.payload?.category;
-   const categoryBids = props?.payload?.bids; // Use bids from payload
-
-    if (categoryBids === undefined || categoryBids === null) {
-        return null; // Don't render tooltip if bids are missing
-    }
-
-    const percentage = totalBids > 0 ? ((categoryBids / totalBids) * 100).toFixed(1) : 0;
-    return (
-        <div className="flex flex-col">
-            <span className="font-medium">{category}</span> {/* Show category name */}
-            <span>{categoryBids} Bids</span>
-            <span className="text-xs text-muted-foreground">({percentage}%)</span>
-        </div>
-    );
-};
-
-
 export function BidsByCategoryChart() {
   return (
     <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
@@ -66,20 +45,36 @@ export function BidsByCategoryChart() {
         <XAxis
           dataKey="category"
           tickLine={false}
-          tickMargin={10}
+          tickMargin={20}
           axisLine={false}
           tickFormatter={(value) => value.slice(0, 3)} // Abbreviate category names if needed
         />
         <ChartTooltip
           cursor={false}
-          content={
-            <ChartTooltipContent
-              indicator="dot"
-              formatter={customTooltipFormatter} // Use the custom formatter here
-              // Pass nameKey to correctly identify the data in the formatter
-               nameKey="category"
-            />
-           }
+          content={({ payload }) => {
+            if (!payload?.length) return null;
+        
+            const { category, bids } = payload[0].payload as { category: keyof typeof chartConfig; bids: number; };
+
+            const percentage = totalBids > 0 ? ((bids / totalBids) * 100).toFixed(1) : 0;
+        
+            return (
+              <div className="rounded-md border bg-background p-2 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  {/* Little colored circle */}
+                  <div
+                    className="h-3 w-3 rounded-full"
+                    style={{backgroundColor: chartConfig[category]?.color}}
+                  />
+                  <span className="font-medium">{category}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span>{bids} Bids</span>
+                  <span className="text-xs text-muted-foreground">({percentage}%)</span>
+                </div>
+              </div>
+            );
+          }}
         />
         <Bar dataKey="bids" radius={4}>
            {chartData.map((entry, index) => (
