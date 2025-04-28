@@ -43,11 +43,11 @@ export default function Home() {
     paidInvoices: 42,
   });
 
-  // Dummy data for Recommendations
+  // Dummy data for Recommendations - structured for table
   const [recommendations, setRecommendations] = useState([
-      "Consider bidding on IT Support Services (Dept. of Commerce)",
-      "Explore partnership with 'ABC Supplies' for office needs.",
-      "Review pricing strategy for construction bids based on recent wins/losses.",
+      { title: "IT Support Services", agency: "Dept. of Commerce", deadline: "2024-08-20" },
+      { title: "Janitorial Supplies", agency: "GSA", deadline: "2024-09-05" },
+      { title: "Fleet Vehicle Maintenance", agency: "SEPTA", deadline: "2024-08-30" },
   ]);
 
 
@@ -412,11 +412,11 @@ export default function Home() {
                </Card>
 
                 {/* Section 5: Quick Links & Recommendations */}
-                <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Quick Links Card */}
+                <Card className="lg:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Quick Links Card */}
                    <CardHeader>
                        <CardTitle>Quick Links</CardTitle>
                    </CardHeader>
-                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <CardContent className="grid grid-cols-1 gap-4">
                         {/* Updated Links with Icons */}
                        <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
                          <FilePlus className="mr-2 h-4 w-4" /> New bid entry form
@@ -436,20 +436,37 @@ export default function Home() {
                    </CardContent>
                </Card>
 
-               <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Recommendations Card */}
+               <Card className="lg:col-span-3 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Recommendations Card */}
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="text-lg font-medium text-primary">Recommendations</CardTitle>
                     <Lightbulb className="h-5 w-5 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                      {recommendations.length > 0 ? (
-                        <ul className="list-disc pl-5 space-y-2 text-sm">
-                           {recommendations.map((rec, index) => (
-                              <li key={index}>{rec}</li>
-                           ))}
-                        </ul>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Title</TableHead>
+                              <TableHead>Agency</TableHead>
+                              <TableHead className="text-right">Deadline</TableHead>
+                              <TableHead className="text-right">Action</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {recommendations.map((rec, index) => (
+                              <TableRow key={index}>
+                                <TableCell className="font-medium">{rec.title}</TableCell>
+                                <TableCell>{rec.agency}</TableCell>
+                                <TableCell className="text-right">{rec.deadline}</TableCell>
+                                <TableCell className="text-right">
+                                  <Button variant="outline" size="sm">View</Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
                      ) : (
-                        <p className="text-sm text-muted-foreground italic">No recommendations available.</p>
+                        <p className="text-sm text-muted-foreground italic text-center py-4">No recommendations available.</p>
                      )}
                      <Button variant="outline" size="sm" className="mt-4 w-full">View All Recommendations</Button>
                   </CardContent>
