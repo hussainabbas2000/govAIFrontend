@@ -1,20 +1,15 @@
+
 "use client"
 
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import {
   ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
+import type * as React from "react"
 
 // Dummy data for the chart
 const chartData = [
@@ -33,6 +28,21 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
+// Calculate total bids for percentage calculation
+const totalBids = chartData.reduce((acc, curr) => acc + curr.bids, 0);
+
+// Custom formatter for the tooltip content
+const customTooltipFormatter = (value: number): React.ReactNode => {
+  const percentage = totalBids > 0 ? ((value / totalBids) * 100).toFixed(1) : 0;
+  return (
+    <div className="flex flex-col">
+      <span>{value} Bids</span>
+      <span className="text-xs text-muted-foreground">({percentage}%)</span>
+    </div>
+  );
+};
+
+
 export function BidsByCategoryChart() {
   return (
     <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
@@ -47,10 +57,16 @@ export function BidsByCategoryChart() {
         />
         <ChartTooltip
           cursor={false}
-          content={<ChartTooltipContent indicator="dot" />}
+          content={
+            <ChartTooltipContent
+              indicator="dot"
+              formatter={customTooltipFormatter} // Use the custom formatter here
+            />
+           }
         />
         <Bar dataKey="bids" fill="var(--color-bids)" radius={4} />
       </BarChart>
     </ChartContainer>
   )
 }
+
