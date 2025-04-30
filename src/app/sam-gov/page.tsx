@@ -1,7 +1,7 @@
 
 'use client';
 
-import {useEffect, useState} from 'react';
+import {useEffect, useState, useMemo} from 'react'; // Added useMemo
 import {
   Card,
   CardContent,
@@ -27,6 +27,7 @@ import {Icons} from '@/components/icons';
 import {SamGovOpportunity, getSamGovOpportunities} from '@/services/sam-gov';
 import {Checkbox} from '@/components/ui/checkbox'; // Import Checkbox
 import Loading from '@/app/loading'; // Import the Loading component
+import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 
 // Define a type for the TotalListingsLabel component props
 interface TotalListingsLabelProps {
@@ -38,8 +39,8 @@ interface TotalListingsLabelProps {
 // TotalListingsLabel component implementation (or ensure it's correctly imported)
 function TotalListingsLabel({ total, loading, className }: TotalListingsLabelProps) {
   if (loading || total === null) {
-    // Use a simple text placeholder or a Skeleton component if available
-    return <span className={cn('text-sm text-muted-foreground', className)}>Loading...</span>;
+    // Use a Skeleton component for loading state
+    return <Skeleton className={cn("h-6 w-24 rounded-full", className)} />;
   }
 
   return (
@@ -58,86 +59,139 @@ function TotalListingsLabel({ total, loading, className }: TotalListingsLabelPro
 const itemsPerPage = 10;
 
 export default function SamGovOpportunitiesPage() {
-  const [samGovOpportunities, setSamGovOpportunities] = useState<
-    SamGovOpportunity[]
-  >([]);
+  const [samGovOpportunities, setSamGovOpportunities] = useState<SamGovOpportunity[]>([]);
+  const [descriptions, setDescriptions] = useState<Record<string, string>>({}); // State for descriptions
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [ncodeFilter, setNcodeFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [showOnlyOpen, setShowOnlyOpen] = useState(false);
-  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true); // Initialize loading state
+  const [error, setError] = useState<string | null>(null); // State for errors
+
+   // Function to fetch description for a single opportunity
+   const fetchDescription = async (opportunity: SamGovOpportunity): Promise<[string, string] | null> => {
+    // Assuming opportunity.description contains the URL or relevant info
+    // If opportunity.description already has the text, return it directly
+    if (opportunity.description && !opportunity.description.startsWith('http')) {
+        return [opportunity.id, opportunity.description];
+    }
+
+    // Placeholder: If description is a URL, fetch it.
+    // In a real scenario, you'd fetch the URL content here.
+    // This example simulates fetching and returns placeholder text.
+    if (opportunity.link && opportunity.link !== '#') {
+         try {
+            // Simulating an async fetch operation
+            // Replace with actual fetch call to the description URL if available
+            // const response = await fetch(opportunity.link); // Example fetch
+            // const text = await response.text(); // Extract text
+             // const parsedDescription = parseDescriptionFromHtml(text); // You'll need a parsing function
+
+             // Simulate delay and return placeholder
+            await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 100)); // Simulate network delay
+            return [opportunity.id, `Detailed description for ${opportunity.title || 'this opportunity'} goes here. This is placeholder text demonstrating where the full description fetched from the source would appear.`];
+         } catch (err) {
+            console.error(`Failed to fetch description for ${opportunity.id}:`, err);
+            return [opportunity.id, "Description not available."]; // Handle error
+         }
+    }
+    return [opportunity.id, opportunity.description || "Description not available."]; // Fallback
+  };
+
 
   useEffect(() => {
-    const fetchSamGovOpportunities = async () => {
-      setLoading(true); // Set loading to true before fetch
-      try {
-        const opportunities = await getSamGovOpportunities({}); // Fetch all initially
+    const fetchAllData = async () => {
+      setLoading(true);
+      setError(null); // Reset error state
+      setDescriptions({}); // Reset descriptions
 
-        if(opportunities){
-          setSamGovOpportunities(opportunities);
-          setTotalItems(opportunities.length);
+      try {
+        // 1. Fetch initial opportunities list
+        const opportunities = await getSamGovOpportunities({});
+        setSamGovOpportunities(opportunities);
+
+        // 2. Fetch descriptions in parallel for better performance
+        if (opportunities.length > 0) {
+          const descriptionPromises = opportunities.map(fetchDescription);
+          const descriptionResults = await Promise.all(descriptionPromises);
+
+          const newDescriptions: Record<string, string> = {};
+          descriptionResults.forEach(result => {
+            if (result) {
+              const [id, desc] = result;
+              newDescriptions[id] = desc;
+            }
+          });
+          setDescriptions(newDescriptions);
         }
-      } catch (error) {
-        console.error("Error fetching SAM.gov opportunities:", error);
-        // Optionally, set an error state here to display an error message
+
+      } catch (error: any) {
+        console.error("Error fetching SAM.gov data:", error);
+        setError(error.message || "Failed to load opportunities.");
+        setSamGovOpportunities([]); // Clear opportunities on error
       } finally {
-        setLoading(false); // Set loading to false after fetch completes
+        setLoading(false);
       }
     };
 
-    fetchSamGovOpportunities();
+    fetchAllData();
   }, []); // Fetch only once on component mount
 
-  // Filter opportunities based on current state
-  const filteredOpportunities = samGovOpportunities?.filter(opportunity => {
-    // Search query filter (check title, department, subtier, office)
-    const matchesSearch =
-      opportunity.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      opportunity.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      opportunity.subtier?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      opportunity.office?.toLowerCase().includes(searchQuery.toLowerCase());
+  // Filter opportunities based on current state - Use useMemo for performance
+  const filteredOpportunities = useMemo(() => {
+    return samGovOpportunities.filter(opportunity => {
+      // Search query filter
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch =
+        opportunity.title?.toLowerCase().includes(searchLower) ||
+        opportunity.department?.toLowerCase().includes(searchLower) ||
+        opportunity.subtier?.toLowerCase().includes(searchLower) ||
+        opportunity.office?.toLowerCase().includes(searchLower) ||
+        (descriptions[opportunity.id] || '').toLowerCase().includes(searchLower); // Search description too
 
-    // NAICS code filter
-    const matchesNaics =
-      !ncodeFilter || // If no filter, always true
-      opportunity.ncode?.toLowerCase().includes(ncodeFilter.toLowerCase());
+      // NAICS code filter
+      const ncodeLower = ncodeFilter.toLowerCase();
+      const matchesNaics = !ncodeLower || opportunity.ncode?.toLowerCase().includes(ncodeLower);
 
-    // Location filter (check city, state, country, zip)
-    const matchesLocation =
-      !locationFilter || // If no filter, always true
-      [
-        opportunity.location?.city?.name,
-        opportunity.location?.state?.name,
-        opportunity.location?.country?.name,
-        opportunity.location?.zip,
-      ]
-        .filter(Boolean) // removes undefined/null entries
-        .some((field) => field && field.toLowerCase().includes(locationFilter.toLowerCase()));
+      // Location filter
+      const locationLower = locationFilter.toLowerCase();
+      const matchesLocation = !locationLower ||
+        [
+          opportunity.location?.city?.name,
+          opportunity.location?.state?.name,
+          opportunity.location?.country?.name,
+          opportunity.location?.zip,
+          opportunity.officeAddress, // Include office address in location search
+        ]
+          .filter(Boolean)
+          .some(field => field?.toLowerCase().includes(locationLower));
 
-    // Date filter
-    const matchesDate =
-      !dateFilter || // If no filter, always true
-      (opportunity.closingDate && new Date(opportunity.closingDate) >= dateFilter); // Check if closing date is on or after selected date
+      // Date filter (Closing date >= selected date)
+      const matchesDate = !dateFilter ||
+        (opportunity.closingDate && new Date(opportunity.closingDate) >= dateFilter);
 
-    // Open listings filter
-    const isOpen =
-      opportunity.closingDate && new Date(opportunity.closingDate) >= new Date(); // Check if closing date is today or later
-    const matchesOpen = !showOnlyOpen || isOpen; // Apply filter only if checkbox is checked
+      // Open listings filter (Closing date >= today)
+      const isOpen = opportunity.closingDate && new Date(opportunity.closingDate).setHours(0,0,0,0) >= new Date().setHours(0,0,0,0);
+      const matchesOpen = !showOnlyOpen || isOpen;
 
-    return matchesSearch && matchesNaics && matchesLocation && matchesDate && matchesOpen;
-  });
+      return matchesSearch && matchesNaics && matchesLocation && matchesDate && matchesOpen;
+    });
+  }, [samGovOpportunities, descriptions, searchQuery, ncodeFilter, locationFilter, dateFilter, showOnlyOpen]);
 
-  const currentTotalItems = filteredOpportunities?.length || 0;
+
+  const currentTotalItems = filteredOpportunities.length;
   const totalPages = Math.ceil(currentTotalItems / itemsPerPage);
 
   // Paginate the *filtered* opportunities
-  const currentOpportunities = filteredOpportunities?.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  ) || [];
+  const currentOpportunities = useMemo(() => {
+     return filteredOpportunities.slice(
+       (currentPage - 1) * itemsPerPage,
+       currentPage * itemsPerPage
+     );
+  }, [filteredOpportunities, currentPage]);
+
 
   const goToPreviousPage = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
@@ -177,8 +231,19 @@ export default function SamGovOpportunitiesPage() {
     setCurrentPage(1); // Reset page on filter change
   }
 
-  if (loading) {
-    return <Loading />; // Show loading component while fetching
+   // Function to truncate description
+   const truncateDescription = (text: string | undefined, wordLimit: number): string => {
+    if (!text) return 'N/A';
+    const words = text.split(' ');
+    if (words.length <= wordLimit) {
+      return text;
+    }
+    return words.slice(0, wordLimit).join(' ') + '...';
+  };
+
+
+  if (loading && samGovOpportunities.length === 0) { // Show loading component only on initial load
+    return <Loading />;
   }
 
   return (
@@ -225,7 +290,7 @@ export default function SamGovOpportunitiesPage() {
 
         {/* Date Filter */}
         <div>
-          <Label>Closing Date:</Label>
+          <Label>Closing Date (On or After):</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -266,7 +331,7 @@ export default function SamGovOpportunitiesPage() {
               id="open-listings"
               checked={showOnlyOpen}
               onCheckedChange={handleShowOnlyOpenChange}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" // Adjusted classes for better style
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
             />
             <Label htmlFor="open-listings" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
               Show Only Open Listings
@@ -281,32 +346,62 @@ export default function SamGovOpportunitiesPage() {
            <TotalListingsLabel total={currentTotalItems} loading={loading} />
         </div>
 
+        {error && <div className="mb-4 text-red-600">Error: {error}</div>}
+
         {loading ? (
-           <p>Loading opportunities...</p> // Or use Skeleton components
+           <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+             {/* Show Skeletons while loading descriptions or filtering */}
+             {Array.from({ length: itemsPerPage }).map((_, index) => (
+               <Card key={`skeleton-${index}`} className="shadow-md rounded-lg">
+                 <CardHeader>
+                   <Skeleton className="h-5 w-3/4 mb-2" />
+                   <Skeleton className="h-4 w-1/2" />
+                 </CardHeader>
+                 <CardContent className="space-y-2">
+                   <Skeleton className="h-4 w-full" />
+                   <Skeleton className="h-4 w-5/6" />
+                   <Skeleton className="h-4 w-full" />
+                   <Skeleton className="h-8 w-24 mt-2" />
+                 </CardContent>
+               </Card>
+             ))}
+           </div>
         ) : currentOpportunities.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {currentOpportunities.map(opportunity => (
-              <Card key={opportunity.id} className="shadow-md hover:shadow-lg transition-shadow duration-200 rounded-lg">
+              <Card key={opportunity.id} className="shadow-md hover:shadow-lg transition-shadow duration-200 rounded-lg flex flex-col">
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold line-clamp-2">{opportunity.title}</CardTitle>
+                  <CardTitle className="text-lg font-semibold line-clamp-2">{opportunity.title || 'N/A'}</CardTitle>
                    <CardDescription className="text-sm text-muted-foreground pt-1">NAICS: {opportunity.ncode || 'N/A'}</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-1">
+                <CardContent className="space-y-1 flex-grow">
                    <CardDescription>Department: {opportunity.department || 'N/A'}</CardDescription>
                    <CardDescription>Subtier: {opportunity.subtier || 'N/A'}</CardDescription>
                    <CardDescription>Office: {opportunity.office || 'N/A'}</CardDescription>
                    <CardDescription>Type: {opportunity.type || 'N/A'}</CardDescription>
-                   <CardDescription>Office Address: {opportunity.officeAddress || 'N/A'}</CardDescription>
                    <CardDescription>
-                      Execute Location: {opportunity.location ? `${opportunity.location.city?.name || ''}${opportunity.location.city?.name && opportunity.location.state?.name ? ', ' : ''}${opportunity.location.state?.name || ''} ${opportunity.location.zip || ''}`.trim() || 'N/A' : 'N/A'}
+                     Execute Location: {
+                       opportunity.location
+                       ? `${opportunity.location.city?.name || ''}${opportunity.location.city?.name && opportunity.location.state?.name ? ', ' : ''}${opportunity.location.state?.name || ''} ${opportunity.location.zip || ''}`.trim() || 'N/A'
+                       : 'N/A'
+                     }
                    </CardDescription>
-                   <CardDescription>Closing Date: {opportunity.closingDate || 'N/A'}</CardDescription>
-                   <Button asChild size="sm" className="mt-2">
+                    <CardDescription>Office Address: {opportunity.officeAddress || 'N/A'}</CardDescription>
+                   <CardDescription>
+                      Closing Date: {opportunity.closingDate ? format(new Date(opportunity.closingDate), 'PPP') : 'N/A'}
+                   </CardDescription>
+                    {/* Display Truncated Description */}
+                    <CardDescription className="pt-2 text-foreground">
+                        Description: {truncateDescription(descriptions[opportunity.id], 50)}
+                    </CardDescription>
+                </CardContent>
+                <div className="p-6 pt-0 mt-auto">
+                   <Button asChild size="sm" className="w-full">
                      <a href={opportunity.link} target="_blank" rel="noopener noreferrer">
                        View Details
                      </a>
                    </Button>
-                </CardContent>
+                </div>
               </Card>
             ))}
           </div>
