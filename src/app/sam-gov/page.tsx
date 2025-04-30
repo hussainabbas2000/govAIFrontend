@@ -248,7 +248,7 @@ export default function SamGovOpportunitiesPage() {
           )}
         </div>
 
-         {/* Show Only Open Listings Filter */}
+         {/* Show Only Open Listings Filter
          <div className="flex items-center space-x-2 pt-2">
             <Input
               type="checkbox"
@@ -260,7 +260,7 @@ export default function SamGovOpportunitiesPage() {
             <Label htmlFor="open-listings" className="text-sm font-medium text-gray-700">
               Show Only Open Listings
             </Label>
-          </div>
+          </div> */}
       </aside>
 
       {/* Main Content Area for Listings */}
@@ -287,7 +287,7 @@ export default function SamGovOpportunitiesPage() {
                    <CardDescription>Type: {opportunity.type || 'N/A'}</CardDescription>
                    <CardDescription>Office Address: {opportunity.officeAddress || 'N/A'}</CardDescription>
                    <CardDescription>
-                      Location: {opportunity.location ? `${opportunity.location.city?.name || ''}${opportunity.location.city?.name && opportunity.location.state?.name ? ', ' : ''}${opportunity.location.state?.name || ''} ${opportunity.location.zip || ''}`.trim() || 'N/A' : 'N/A'}
+                      Execute Location: {opportunity.location ? `${opportunity.location.city?.name || ''}${opportunity.location.city?.name && opportunity.location.state?.name ? ', ' : ''}${opportunity.location.state?.name || ''} ${opportunity.location.zip || ''}`.trim() || 'N/A' : 'N/A'}
                    </CardDescription>
                    <CardDescription>Closing Date: {opportunity.closingDate || 'N/A'}</CardDescription>
                    <Button asChild size="sm" className="mt-2">
