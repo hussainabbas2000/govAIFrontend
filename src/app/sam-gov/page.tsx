@@ -64,7 +64,7 @@ export default function SamGovOpportunitiesPage() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   ) || [];
-
+  
   const goToPreviousPage = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
   };
@@ -118,9 +118,16 @@ export default function SamGovOpportunitiesPage() {
         opportunity.ncode?.toLowerCase().includes(ncodeFilter.toLowerCase());
 
     const matchesLocation =
-        locationFilter === '' ||
-        opportunity.location?.toLowerCase().includes(locationFilter.toLowerCase());
-
+      locationFilter === '' ||
+        [
+          opportunity.location?.city?.name,
+          opportunity.location?.state?.name,
+          opportunity.location?.country?.name,
+          opportunity.location?.zip,
+        ]
+          .filter(Boolean) // removes undefined/null entries
+          .some((field) => field.toLowerCase().includes(locationFilter.toLowerCase()));
+      
     return matchesSearch && matchesNaics && matchesLocation && (matchesDate(opportunity) || (!dateFilter && showOnlyOpen && isCurrentlyOpen(opportunity)) || (!dateFilter && !showOnlyOpen)) && (showOpenListings(opportunity) || !showOnlyOpen);
   });
 
@@ -238,7 +245,12 @@ export default function SamGovOpportunitiesPage() {
                     <CardDescription>Office: {opportunity.office}</CardDescription>
                     <CardDescription>Type: {opportunity.type}</CardDescription>
                     <CardDescription>Office Address: {opportunity.officeAddress}</CardDescription>
-                    <CardDescription>Location: {opportunity.location}</CardDescription>
+                    {opportunity.location !== null && opportunity.location !== undefined && opportunity.location.city !== null && opportunity.location.city !== undefined && opportunity.location.state !== null && opportunity.location.state !== undefined && opportunity.location.country !== null && opportunity.location.country !== undefined && opportunity.location.zip !== null && opportunity.location.zip !== undefined ? (
+                      <CardDescription>Execute Location: {opportunity.location.city.name}, {opportunity.location.state.name}, {opportunity.location.country.name}, {opportunity.location.zip}</CardDescription>
+                    ) :
+                    (
+                      <CardDescription>Execute Location: Not Available</CardDescription>
+                    )}
                     <CardDescription>
                       Closing Date: {opportunity.closingDate}
                     </CardDescription>

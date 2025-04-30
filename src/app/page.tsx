@@ -19,7 +19,7 @@ import { TotalListingsLabel } from '@/components/total-listings-label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe, DollarSign, Percent, Send, Trophy, Layers, CheckCircle, BellRing, Clock, FileCheck, SearchCode, CreditCard, CircleDollarSign, Lightbulb } from 'lucide-react'; // Added necessary icons
+import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe, DollarSign, Percent, Send, Trophy, Layers, CheckCircle, BellRing, Clock, FileCheck, SearchCode, CreditCard, CircleDollarSign, Lightbulb, Mail } from 'lucide-react'; // Added necessary icons
 import { BidsByCategoryChart } from '@/components/dashboard/bids-by-category-chart';
 import { BidsByPortalChart } from '@/components/dashboard/bids-by-portal-chart'; // Import the new chart component
 
@@ -52,41 +52,41 @@ export default function Home() {
 
 
   useEffect(() => {
-    //  const fetchSeptaOpportunities = async () => {
-    //    try {
-    //      const response = await fetch('/api/run-python-script');
-    //      if (!response.ok) {
-    //        console.error(`HTTP error! status: ${response.status}`);
-    //        try {
-    //          const errorData = await response.json();
-    //          setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - ${errorData.error}`);
-    //        } catch (e) {
-    //          setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - ${response.statusText}`);
-    //        }
-    //        setSeptaListingsCount(0); // Set count to 0 or handle error state appropriately
-    //        return;
-    //      }
-    //       // Assuming the python script updates the JSON file which is then imported
-    //       // Fetch the count from the potentially updated JSON data
-    //       // Note: This approach might lead to stale data if the script fails or runs async
-    //       // A better approach would be to have the API route return the count or data directly.
-    //      const septaResponse = await fetch('/api/septa'); // Assuming this endpoint reads the JSON
-    //      if(septaResponse.ok){
-    //         const data = await septaResponse.json();
-    //         setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
-    //      } else {
-            setSeptaListingsCount(10);
-    //         console.error("Could not fetch SEPTA data after script run");
-    //      }
+     const fetchSeptaOpportunities = async () => {
+       try {
+         const response = await fetch('/api/run-python-script');
+         if (!response.ok) {
+           console.error(`HTTP error! status: ${response.status}`);
+           try {
+             const errorData = await response.json();
+             setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - ${errorData.error}`);
+           } catch (e) {
+             setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - ${response.statusText}`);
+           }
+           setSeptaListingsCount(0); // Set count to 0 or handle error state appropriately
+           return;
+         }
+          // Assuming the python script updates the JSON file which is then imported
+          // Fetch the count from the potentially updated JSON data
+          // Note: This approach might lead to stale data if the script fails or runs async
+          // A better approach would be to have the API route return the count or data directly.
+         const septaResponse = await fetch('/api/septa'); // Assuming this endpoint reads the JSON
+         if(septaResponse.ok){
+            const data = await septaResponse.json();
+            setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
+         } else {
+            console.error("Could not fetch SEPTA data after script run");
+            setSeptaListingsCount(10); // Fallback dummy count
+         }
 
-    //    } catch (err: any) {
-    //      console.error('Error fetching SEPTA opportunities:', err);
-    //      setError(err.message || 'An unexpected error occurred while fetching SEPTA opportunities.');
-    //      setSeptaListingsCount(0);
-    //    }
-    //  };
+       } catch (err: any) {
+         console.error('Error fetching SEPTA opportunities:', err);
+         setError(err.message || 'An unexpected error occurred while fetching SEPTA opportunities.');
+         setSeptaListingsCount(0);
+       }
+     };
 
-    // fetchSeptaOpportunities();
+    fetchSeptaOpportunities();
   }, []);
 
 
@@ -299,9 +299,9 @@ export default function Home() {
                          <TableCell className="text-right">2024-09-01</TableCell>
                        </TableRow>
                        {/* Add more rows as needed */}
-                        <TableRow>
+                        {/* <TableRow>
                           <TableCell colSpan={4} className="text-center text-muted-foreground italic">No ongoing bids</TableCell>
-                        </TableRow>
+                        </TableRow> */}
                      </TableBody>
                    </Table>
                    <Button variant="outline" size="sm" className="mt-4 w-full">View All Ongoing Bids</Button>
@@ -477,7 +477,13 @@ export default function Home() {
 
           {/* Footer */}
           <footer className="border-t bg-background px-6 py-4 text-center text-sm text-muted-foreground">
-            © {new Date().getFullYear()} GovContract Navigator. All rights reserved.
+            <div className="flex justify-center items-center space-x-4">
+              <span>© {new Date().getFullYear()} GovContract Navigator. All rights reserved.</span>
+              <span className="text-muted-foreground">|</span>
+              <Button variant="link" className="p-0 h-auto text-sm text-primary hover:underline" onClick={() => {/* Navigate to Contact Us */}}>
+                 <Mail className="mr-1 h-4 w-4" /> Contact Us
+              </Button>
+            </div>
           </footer>
         </div>
       </div>

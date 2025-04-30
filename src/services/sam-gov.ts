@@ -1,3 +1,5 @@
+import { map } from "zod";
+
 /**
  * Represents a government contract opportunity from SAM.gov.
  */
@@ -17,7 +19,21 @@ export interface SamGovOpportunity {
   /**
    * The location of the opportunity.
    */
-  location: string;
+  location: {
+    city: {
+      code: string,
+      name: string
+    },
+    state: {
+      code: string,
+      name: string
+    },
+    country: {
+      code: string,
+      name: string
+    },
+    zip: string
+  };
   /**
    * The closing date for the opportunity.
    */
@@ -98,24 +114,27 @@ export async function getSamGovOpportunities(
         opportunity.subtier = parts[1] || '';
         opportunity.office = parts[parts.length - 1] || '';
       });
-      console.log(activeOpportunities)
      
+
       // Map to SamGovOpportunity
-      const mappedOpportunities: SamGovOpportunity[] = activeOpportunities.map((opportunity: any) => ({
+      const mappedOpportunities: SamGovOpportunity[] = activeOpportunities.map((opportunity: any) => {
         
+        const n = Array.isArray(opportunity.naicsCodes) ? opportunity.naicsCodes.join(',') : opportunity.naicsCodes;
+        return {
         id: opportunity.noticeId,
         title: opportunity.title,
-        ncode: opportunity.naicsCodes,
+        ncode: n.toLowerCase().replace(/\s+/g, ''),
         department: opportunity.department,
         subtier: opportunity.subtier,
         office: opportunity.office,
-        location: opportunity.placeOfPerformance ? opportunity.placeOfPerformance.state : 'N/A',
+        location: opportunity.placeOfPerformance,
         closingDate: opportunity.responseDeadLine,
         type: opportunity.type,
         link: opportunity.uiLink,
         officeAddress: `${opportunity.officeAddress.city}, ${opportunity.officeAddress.state}, ${opportunity.officeAddress.countryCode}, ${opportunity.officeAddress.zipcode}`
-      }));
-      
+        }
+      });
+
       return mappedOpportunities;
     } catch (error: any) {
       console.error('Error fetching data from SAM.gov API:', error);
@@ -134,9 +153,13 @@ export async function getSamGovOpportunities(
   
   function getOneYearBackDate(): string {
     const today = new Date();
-    const mm = String(today.getMonth() + 1).padStart(2, '0'); // January is 0!
-    const dd = String(today.getDate()+1).padStart(2, '0');
-    const yyyy = today.getFullYear() - 1;
+    const pastDate = new Date(today);
+    pastDate.setDate(today.getDate() - 364); // Subtract 364 days
+  
+    const mm = String(pastDate.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+    const dd = String(pastDate.getDate()).padStart(2, '0');
+    const yyyy = pastDate.getFullYear();
+  
     return `${mm}/${dd}/${yyyy}`;
   }
   
