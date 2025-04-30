@@ -25,6 +25,33 @@ import {format} from 'date-fns';
 import {Icons} from '@/components/icons';
 import {SamGovOpportunity, getSamGovOpportunities} from '@/services/sam-gov';
 
+// Define a type for the TotalListingsLabel component props
+interface TotalListingsLabelProps {
+  total: number | null; // Allow null for initial loading state
+  loading?: boolean;
+  className?: string;
+}
+
+// TotalListingsLabel component implementation (or ensure it's correctly imported)
+function TotalListingsLabel({ total, loading, className }: TotalListingsLabelProps) {
+  if (loading || total === null) {
+    // Use a simple text placeholder or a Skeleton component if available
+    return <span className={cn('text-sm text-muted-foreground', className)}>Loading...</span>;
+  }
+
+  return (
+    <div
+      className={cn(
+        'inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary shadow-sm border border-primary/20',
+        className
+      )}
+    >
+      Total Listings: {total}
+    </div>
+  );
+}
+
+
 const itemsPerPage = 10;
 
 export default function SamGovOpportunitiesPage() {
@@ -38,33 +65,71 @@ export default function SamGovOpportunitiesPage() {
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [showOnlyOpen, setShowOnlyOpen] = useState(false);
   const [totalItems, setTotalItems] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchSamGovOpportunities = async () => {
-      const searchParams = {
-        title: searchQuery,
-        ncode: ncodeFilter,
-        state: locationFilter,
-      };
-
-      const opportunities = await getSamGovOpportunities(searchParams);
+      setLoading(true);
+      const opportunities = await getSamGovOpportunities({}); // Fetch all initially
 
       if(opportunities){
         setSamGovOpportunities(opportunities);
         setTotalItems(opportunities.length);
       }
+      setLoading(false);
     };
 
     fetchSamGovOpportunities();
-  }, [searchQuery, ncodeFilter, locationFilter]);
+  }, []); // Fetch only once on component mount
 
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  // Filter opportunities based on current state
+  const filteredOpportunities = samGovOpportunities?.filter(opportunity => {
+    // Search query filter (check title, department, subtier, office)
+    const matchesSearch =
+      opportunity.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      opportunity.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      opportunity.subtier?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      opportunity.office?.toLowerCase().includes(searchQuery.toLowerCase());
 
-  const currentOpportunities = samGovOpportunities?.slice(
+    // NAICS code filter
+    const matchesNaics =
+      !ncodeFilter || // If no filter, always true
+      opportunity.ncode?.toLowerCase().includes(ncodeFilter.toLowerCase());
+
+    // Location filter (check city, state, country, zip)
+    const matchesLocation =
+      !locationFilter || // If no filter, always true
+      [
+        opportunity.location?.city?.name,
+        opportunity.location?.state?.name,
+        opportunity.location?.country?.name,
+        opportunity.location?.zip,
+      ]
+        .filter(Boolean) // removes undefined/null entries
+        .some((field) => field && field.toLowerCase().includes(locationFilter.toLowerCase()));
+
+    // Date filter
+    const matchesDate =
+      !dateFilter || // If no filter, always true
+      (opportunity.closingDate && format(dateFilter, 'yyyy-MM-dd') === opportunity.closingDate);
+
+    // Open listings filter
+    const isOpen =
+      opportunity.closingDate && new Date(opportunity.closingDate) >= new Date();
+    const matchesOpen = !showOnlyOpen || isOpen;
+
+    return matchesSearch && matchesNaics && matchesLocation && matchesDate && matchesOpen;
+  });
+
+  const currentTotalItems = filteredOpportunities?.length || 0;
+  const totalPages = Math.ceil(currentTotalItems / itemsPerPage);
+
+  // Paginate the *filtered* opportunities
+  const currentOpportunities = filteredOpportunities?.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   ) || [];
-  
+
   const goToPreviousPage = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
   };
@@ -75,219 +140,193 @@ export default function SamGovOpportunitiesPage() {
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
-    setCurrentPage(1);
+    setCurrentPage(1); // Reset page on filter change
   };
 
   const handleNcodeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setNcodeFilter(event.target.value);
-    setCurrentPage(1);
+    setCurrentPage(1); // Reset page on filter change
   };
 
   const handleLocationChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setLocationFilter(event.target.value);
-    setCurrentPage(1);
+    setCurrentPage(1); // Reset page on filter change
   };
 
   const handleClearDate = () => {
     setDateFilter(undefined);
+    setCurrentPage(1); // Reset page on filter change
   };
 
-  const handleFilter = () => {
-      setCurrentPage(1);
-  };
+  const handleDateSelect = (date: Date | undefined) => {
+    setDateFilter(date);
+    setCurrentPage(1); // Reset page on filter change
+  }
 
-  const matchesDate = (opportunity: SamGovOpportunity) => {
-    return !dateFilter || format(dateFilter, 'yyyy-MM-dd') === opportunity.closingDate;
-  };
+  const handleShowOnlyOpenChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setShowOnlyOpen(event.target.checked);
+    setCurrentPage(1); // Reset page on filter change
+  }
 
-  const isCurrentlyOpen = (opportunity: SamGovOpportunity) => {
-    return !dateFilter && new Date(opportunity.closingDate) >= new Date();
-  };
-
-  const showOpenListings = (opportunity: SamGovOpportunity) => {
-    return !showOnlyOpen || new Date(opportunity.closingDate) >= new Date();
-  };
-
-  const filteredOpportunities = samGovOpportunities?.filter(opportunity => {
-    const matchesSearch =
-        opportunity.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        opportunity.department?.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesNaics =
-        ncodeFilter === '' ||
-        opportunity.ncode?.toLowerCase().includes(ncodeFilter.toLowerCase());
-
-    const matchesLocation =
-      locationFilter === '' ||
-        [
-          opportunity.location?.city?.name,
-          opportunity.location?.state?.name,
-          opportunity.location?.country?.name,
-          opportunity.location?.zip,
-        ]
-          .filter(Boolean) // removes undefined/null entries
-          .some((field) => field.toLowerCase().includes(locationFilter.toLowerCase()));
-      
-    return matchesSearch && matchesNaics && matchesLocation && (matchesDate(opportunity) || (!dateFilter && showOnlyOpen && isCurrentlyOpen(opportunity)) || (!dateFilter && !showOnlyOpen)) && (showOpenListings(opportunity) || !showOnlyOpen);
-  });
 
   return (
-    <main className="flex flex-col gap-4 p-4">
-      <div className="container mx-auto max-w-screen-lg">
-        <div className="flex items-center justify-between mb-4">
+    <main className="flex flex-1">
+      {/* Sidebar for Filters */}
+      <aside className="w-64 border-r p-4 flex flex-col space-y-4 bg-secondary/50">
+        <h3 className="text-lg font-semibold mb-2">Filters</h3>
+
+        {/* Search Filter */}
+        <div>
+          <Label htmlFor="search">Search:</Label>
+          <Input
+            id="search"
+            type="text"
+            placeholder="Keywords..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+          />
+        </div>
+
+        {/* NAICS Code Filter */}
+        <div>
+          <Label htmlFor="naics">NAICS Code:</Label>
+          <Input
+            id="naics"
+            type="text"
+            placeholder="e.g., 541511"
+            value={ncodeFilter}
+            onChange={handleNcodeChange}
+          />
+        </div>
+
+        {/* Location Filter */}
+        <div>
+          <Label htmlFor="location">Location:</Label>
+          <Input
+            id="location"
+            type="text"
+            placeholder="City, State, Zip..."
+            value={locationFilter}
+            onChange={handleLocationChange}
+          />
+        </div>
+
+        {/* Date Filter */}
+        <div>
+          <Label>Closing Date:</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={'outline'}
+                className={cn(
+                  'w-full justify-start text-left font-normal',
+                  !dateFilter && 'text-muted-foreground'
+                )}
+              >
+                 <Icons.calendar className="mr-2 h-4 w-4" />
+                {dateFilter ? format(dateFilter, 'PPP') : <span>Pick a date</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={dateFilter}
+                onSelect={handleDateSelect}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+          {dateFilter && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearDate}
+              className="mt-1 w-full text-xs"
+            >
+              Clear Date
+            </Button>
+          )}
+        </div>
+
+         {/* Show Only Open Listings Filter */}
+         <div className="flex items-center space-x-2 pt-2">
+            <Input
+              type="checkbox"
+              id="open-listings"
+              checked={showOnlyOpen}
+              onChange={handleShowOnlyOpenChange}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            <Label htmlFor="open-listings" className="text-sm font-medium text-gray-700">
+              Show Only Open Listings
+            </Label>
+          </div>
+      </aside>
+
+      {/* Main Content Area for Listings */}
+      <div className="flex-1 p-6">
+        <div className="flex items-center justify-between mb-6">
           <h2 className="text-3xl font-bold">SAM.gov Opportunities</h2>
-          <div className="rounded-full bg-secondary text-secondary-foreground px-4 py-2 font-medium text-sm">
-            Total Listings: {totalItems}
-          </div>
+           <TotalListingsLabel total={currentTotalItems} loading={loading} />
         </div>
 
-        <div className="flex mb-4">
-          <div className="w-1/4 pr-4">
-            <h3 className="text-lg font-semibold mb-2">Filters</h3>
-            <div className="mb-2">
-              <Label htmlFor="search">Search:</Label>
-              <Input
-                id="search"
-                type="text"
-                placeholder="Search listings..."
-                value={searchQuery}
-                onChange={handleSearchChange}
-              />
-            </div>
-
-            <div className="mb-2">
-              <Label htmlFor="naics">NAICS Code:</Label>
-              <Input
-                id="naics"
-                type="text"
-                placeholder="Filter by NAICS code..."
-                value={ncodeFilter}
-                onChange={handleNcodeChange}
-              />
-            </div>
-
-            <div className="mb-2">
-              <Label htmlFor="location">Location:</Label>
-              <Input
-                id="location"
-                type="text"
-                placeholder="Filter by location..."
-                value={locationFilter}
-                onChange={handleLocationChange}
-              />
-            </div>
-
-            <div className="mb-2 flex items-center">
-              <Label>Closing Date:</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={'outline'}
-                    className={cn(
-                      'w-[240px] justify-start text-left font-normal',
-                      !dateFilter && 'text-muted-foreground'
-                    )}
-                  >
-                    {dateFilter ? (
-                      format(dateFilter, 'yyyy-MM-dd')
-                    ) : (
-                      <span>Pick a date</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="center" side="bottom">
-                  <Calendar
-                    mode="single"
-                    selected={dateFilter}
-                    onSelect={setDateFilter}
-                    disabled={(date) => date < new Date('2020-01-01')}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              {dateFilter && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClearDate}
-                  className="ml-2"
-                >
-                  <Icons.close className="w-4 h-4"/>
-                </Button>
-              )}
-            </div>
-             <div className="mb-2">
-              <div className="flex items-center space-x-2">
-                <Input
-                  id="open"
-                  type="checkbox"
-                  checked={showOnlyOpen}
-                  onChange={(e) => setShowOnlyOpen(e.target.checked)}
-                  className="w-4 h-4"  // Adjust the size of the checkbox here
-                />
-                <Label htmlFor="open" className="text-sm">Show Only Open Listings</Label>
-              </div>
-            </div>
+        {loading ? (
+           <p>Loading opportunities...</p> // Or use Skeleton components
+        ) : currentOpportunities.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {currentOpportunities.map(opportunity => (
+              <Card key={opportunity.id} className="shadow-md hover:shadow-lg transition-shadow duration-200 rounded-lg">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold line-clamp-2">{opportunity.title}</CardTitle>
+                   <CardDescription className="text-sm text-muted-foreground pt-1">NAICS: {opportunity.ncode || 'N/A'}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-1">
+                   <CardDescription>Department: {opportunity.department || 'N/A'}</CardDescription>
+                   <CardDescription>Subtier: {opportunity.subtier || 'N/A'}</CardDescription>
+                   <CardDescription>Office: {opportunity.office || 'N/A'}</CardDescription>
+                   <CardDescription>Type: {opportunity.type || 'N/A'}</CardDescription>
+                   <CardDescription>Office Address: {opportunity.officeAddress || 'N/A'}</CardDescription>
+                   <CardDescription>
+                     Location: {opportunity.location ? `${opportunity.location.city?.name || ''}, ${opportunity.location.state?.name || ''} ${opportunity.location.zip || ''}`.replace(/^,?\s*|\s*$/g, '') || 'N/A' : 'N/A'}
+                   </CardDescription>
+                   <CardDescription>Closing Date: {opportunity.closingDate || 'N/A'}</CardDescription>
+                   <Button asChild size="sm" className="mt-2">
+                     <a href={opportunity.link} target="_blank" rel="noopener noreferrer">
+                       View Details
+                     </a>
+                   </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
+        ) : (
+          <p className="text-center text-muted-foreground mt-10">No opportunities match the current filters.</p>
+        )}
 
-          <div className="w-3/4">
-            <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {currentOpportunities.map(opportunity => (
-                <Card key={opportunity.id} className="shadow-md">
-                  <CardHeader>
-                    <CardTitle className="text-lg font-semibold">
-                      {opportunity.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription>Department: {opportunity.department}</CardDescription>
-                    <CardDescription>Subtier: {opportunity.subtier}</CardDescription>
-                    <CardDescription>Office: {opportunity.office}</CardDescription>
-                    <CardDescription>Type: {opportunity.type}</CardDescription>
-                    <CardDescription>Office Address: {opportunity.officeAddress}</CardDescription>
-                    {opportunity.location !== null && opportunity.location !== undefined && opportunity.location.city !== null && opportunity.location.city !== undefined && opportunity.location.state !== null && opportunity.location.state !== undefined && opportunity.location.country !== null && opportunity.location.country !== undefined && opportunity.location.zip !== null && opportunity.location.zip !== undefined ? (
-                      <CardDescription>Execute Location: {opportunity.location.city.name}, {opportunity.location.state.name}, {opportunity.location.country.name}, {opportunity.location.zip}</CardDescription>
-                    ) :
-                    (
-                      <CardDescription>Execute Location: Not Available</CardDescription>
-                    )}
-                    <CardDescription>
-                      Closing Date: {opportunity.closingDate}
-                    </CardDescription>
-                    <CardDescription>NAICS: {opportunity.ncode}</CardDescription>
-                    <Button asChild>
-                    <a href={`${opportunity.link}`} target="_blank" rel="noopener noreferrer">
-                      View Details
-                    </a>
-                  </Button>
-                  </CardContent>
-                </Card>
-              ))}
+        {/* Pagination Controls */}
+        { totalPages > 1 && (
+            <div className="flex w-full items-center justify-center space-x-2 p-4 mt-6">
+              <Button
+                onClick={goToPreviousPage}
+                disabled={currentPage === 1}
+                variant="outline"
+                size="sm"
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                {`Page ${currentPage} of ${totalPages}`}
+              </span>
+              <Button
+                onClick={goToNextPage}
+                disabled={currentPage === totalPages}
+                variant="outline"
+                size="sm"
+              >
+                Next
+              </Button>
             </div>
-          </div>
-        </div>
-
-        <div className="flex w-full items-center justify-center space-x-2 p-4">
-          <Button
-            onClick={goToPreviousPage}
-            disabled={currentPage === 1}
-            variant="outline"
-            size="sm"
-          >
-            Previous
-          </Button>
-          <span>
-            {`Page ${currentPage} of ${totalPages} (Total: ${totalItems} items)`}
-          </span>
-          <Button
-            onClick={goToNextPage}
-            disabled={currentPage === totalPages || totalPages === 0}
-            variant="outline"
-            size="sm"
-          >
-            Next
-          </Button>
-        </div>
+        )}
       </div>
     </main>
   );
