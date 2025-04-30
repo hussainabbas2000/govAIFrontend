@@ -1,7 +1,7 @@
 
 'use client';
 
-import {useEffect, useState, useMemo} from 'react'; // Added useMemo
+import {useEffect, useState, useMemo} from 'react';
 import {
   Card,
   CardContent,
@@ -25,112 +25,49 @@ import {cn} from '@/lib/utils';
 import {format} from 'date-fns';
 import {Icons} from '@/components/icons';
 import {SamGovOpportunity, getSamGovOpportunities} from '@/services/sam-gov';
-import {Checkbox} from '@/components/ui/checkbox'; // Import Checkbox
-import Loading from '@/app/loading'; // Import the Loading component
-import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
-
-// Define a type for the TotalListingsLabel component props
-interface TotalListingsLabelProps {
-  total: number | null; // Allow null for initial loading state
-  loading?: boolean;
-  className?: string;
-}
-
-// TotalListingsLabel component implementation (or ensure it's correctly imported)
-function TotalListingsLabel({ total, loading, className }: TotalListingsLabelProps) {
-  if (loading || total === null) {
-    // Use a Skeleton component for loading state
-    return <Skeleton className={cn("h-6 w-24 rounded-full", className)} />;
-  }
-
-  return (
-    <div
-      className={cn(
-        'inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary shadow-sm border border-primary/20',
-        className
-      )}
-    >
-      Total Listings: {total}
-    </div>
-  );
-}
+import {Checkbox} from '@/components/ui/checkbox';
+import Loading from '@/app/loading';
+import { Skeleton } from "@/components/ui/skeleton";
+import { TotalListingsLabel } from '@/components/total-listings-label';
 
 
 const itemsPerPage = 10;
 
 export default function SamGovOpportunitiesPage() {
   const [samGovOpportunities, setSamGovOpportunities] = useState<SamGovOpportunity[]>([]);
-  const [descriptions, setDescriptions] = useState<Record<string, string>>({}); // State for descriptions
+  const [descriptions, setDescriptions] = useState<Record<string, string>>({}); // State remains for descriptions
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [ncodeFilter, setNcodeFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [showOnlyOpen, setShowOnlyOpen] = useState(false);
-  const [loading, setLoading] = useState(true); // Initialize loading state
-  const [error, setError] = useState<string | null>(null); // State for errors
-
-   // Function to fetch description for a single opportunity
-   const fetchDescription = async (opportunity: SamGovOpportunity): Promise<[string, string] | null> => {
-    // Assuming opportunity.description contains the URL or relevant info
-    // If opportunity.description already has the text, return it directly
-    if (opportunity.description && !opportunity.description.startsWith('http')) {
-        return [opportunity.id, opportunity.description];
-    }
-
-    // Placeholder: If description is a URL, fetch it.
-    // In a real scenario, you'd fetch the URL content here.
-    // This example simulates fetching and returns placeholder text.
-    if (opportunity.link && opportunity.link !== '#') {
-         try {
-            // Simulating an async fetch operation
-            // Replace with actual fetch call to the description URL if available
-            // const response = await fetch(opportunity.link); // Example fetch
-            // const text = await response.text(); // Extract text
-             // const parsedDescription = parseDescriptionFromHtml(text); // You'll need a parsing function
-
-             // Simulate delay and return placeholder
-            await new Promise(resolve => setTimeout(resolve, 50 + Math.random() * 100)); // Simulate network delay
-            return [opportunity.id, `Detailed description for ${opportunity.title || 'this opportunity'} goes here. This is placeholder text demonstrating where the full description fetched from the source would appear.`];
-         } catch (err) {
-            console.error(`Failed to fetch description for ${opportunity.id}:`, err);
-            return [opportunity.id, "Description not available."]; // Handle error
-         }
-    }
-    return [opportunity.id, opportunity.description || "Description not available."]; // Fallback
-  };
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
 
   useEffect(() => {
     const fetchAllData = async () => {
       setLoading(true);
-      setError(null); // Reset error state
+      setError(null);
       setDescriptions({}); // Reset descriptions
 
       try {
-        // 1. Fetch initial opportunities list
+        // Fetch opportunities list - includes descriptions
         const opportunities = await getSamGovOpportunities({});
         setSamGovOpportunities(opportunities);
 
-        // 2. Fetch descriptions in parallel for better performance
-        if (opportunities.length > 0) {
-          const descriptionPromises = opportunities.map(fetchDescription);
-          const descriptionResults = await Promise.all(descriptionPromises);
-
-          const newDescriptions: Record<string, string> = {};
-          descriptionResults.forEach(result => {
-            if (result) {
-              const [id, desc] = result;
-              newDescriptions[id] = desc;
-            }
-          });
-          setDescriptions(newDescriptions);
-        }
+        // Populate descriptions state from fetched data
+        const newDescriptions: Record<string, string> = {};
+        opportunities.forEach(opp => {
+          newDescriptions[opp.id] = opp.description || "No description available.";
+        });
+        setDescriptions(newDescriptions);
 
       } catch (error: any) {
         console.error("Error fetching SAM.gov data:", error);
         setError(error.message || "Failed to load opportunities.");
-        setSamGovOpportunities([]); // Clear opportunities on error
+        setSamGovOpportunities([]);
       } finally {
         setLoading(false);
       }
@@ -315,10 +252,10 @@ export default function SamGovOpportunitiesPage() {
           </Popover>
           {dateFilter && (
             <Button
-              variant="ghost"
+              variant="link"
               size="sm"
               onClick={handleClearDate}
-              className="mt-1 w-full text-xs"
+              className="mt-1 w-full text-xs h-auto p-0 justify-start text-primary hover:underline"
             >
               Clear Date
             </Button>
@@ -331,7 +268,7 @@ export default function SamGovOpportunitiesPage() {
               id="open-listings"
               checked={showOnlyOpen}
               onCheckedChange={handleShowOnlyOpenChange}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              className="h-4 w-4 rounded border-primary text-primary focus:ring-primary"
             />
             <Label htmlFor="open-listings" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
               Show Only Open Listings
