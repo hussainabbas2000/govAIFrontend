@@ -1,3 +1,4 @@
+
 'use client';
 
 import {useEffect, useState} from 'react';
@@ -24,6 +25,8 @@ import {cn} from '@/lib/utils';
 import {format} from 'date-fns';
 import {Icons} from '@/components/icons';
 import {SamGovOpportunity, getSamGovOpportunities} from '@/services/sam-gov';
+import {Checkbox} from '@/components/ui/checkbox'; // Import Checkbox
+import Loading from '@/app/loading'; // Import the Loading component
 
 // Define a type for the TotalListingsLabel component props
 interface TotalListingsLabelProps {
@@ -65,18 +68,24 @@ export default function SamGovOpportunitiesPage() {
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [showOnlyOpen, setShowOnlyOpen] = useState(false);
   const [totalItems, setTotalItems] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Initialize loading state
 
   useEffect(() => {
     const fetchSamGovOpportunities = async () => {
-      setLoading(true);
-      const opportunities = await getSamGovOpportunities({}); // Fetch all initially
+      setLoading(true); // Set loading to true before fetch
+      try {
+        const opportunities = await getSamGovOpportunities({}); // Fetch all initially
 
-      if(opportunities){
-        setSamGovOpportunities(opportunities);
-        setTotalItems(opportunities.length);
+        if(opportunities){
+          setSamGovOpportunities(opportunities);
+          setTotalItems(opportunities.length);
+        }
+      } catch (error) {
+        console.error("Error fetching SAM.gov opportunities:", error);
+        // Optionally, set an error state here to display an error message
+      } finally {
+        setLoading(false); // Set loading to false after fetch completes
       }
-      setLoading(false);
     };
 
     fetchSamGovOpportunities();
@@ -163,11 +172,14 @@ export default function SamGovOpportunitiesPage() {
     setCurrentPage(1); // Reset page on filter change
   }
 
-  const handleShowOnlyOpenChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setShowOnlyOpen(event.target.checked);
+  const handleShowOnlyOpenChange = (checked: boolean | 'indeterminate') => {
+    setShowOnlyOpen(!!checked); // Ensure boolean value
     setCurrentPage(1); // Reset page on filter change
   }
 
+  if (loading) {
+    return <Loading />; // Show loading component while fetching
+  }
 
   return (
     <main className="flex flex-1">
@@ -248,19 +260,18 @@ export default function SamGovOpportunitiesPage() {
           )}
         </div>
 
-         {/* Show Only Open Listings Filter
+         {/* Show Only Open Listings Filter */}
          <div className="flex items-center space-x-2 pt-2">
-            <Input
-              type="checkbox"
+            <Checkbox
               id="open-listings"
               checked={showOnlyOpen}
-              onChange={handleShowOnlyOpenChange}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              onCheckedChange={handleShowOnlyOpenChange}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" // Adjusted classes for better style
             />
-            <Label htmlFor="open-listings" className="text-sm font-medium text-gray-700">
+            <Label htmlFor="open-listings" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
               Show Only Open Listings
             </Label>
-          </div> */}
+          </div>
       </aside>
 
       {/* Main Content Area for Listings */}
