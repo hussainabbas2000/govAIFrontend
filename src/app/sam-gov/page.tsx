@@ -111,12 +111,12 @@ export default function SamGovOpportunitiesPage() {
     // Date filter
     const matchesDate =
       !dateFilter || // If no filter, always true
-      (opportunity.closingDate && format(dateFilter, 'yyyy-MM-dd') === opportunity.closingDate);
+      (opportunity.closingDate && new Date(opportunity.closingDate) >= dateFilter); // Check if closing date is on or after selected date
 
     // Open listings filter
     const isOpen =
-      opportunity.closingDate && new Date(opportunity.closingDate) >= new Date();
-    const matchesOpen = !showOnlyOpen || isOpen;
+      opportunity.closingDate && new Date(opportunity.closingDate) >= new Date(); // Check if closing date is today or later
+    const matchesOpen = !showOnlyOpen || isOpen; // Apply filter only if checkbox is checked
 
     return matchesSearch && matchesNaics && matchesLocation && matchesDate && matchesOpen;
   });
@@ -201,7 +201,7 @@ export default function SamGovOpportunitiesPage() {
 
         {/* Location Filter */}
         <div>
-          <Label htmlFor="location">Location:</Label>
+          <Label htmlFor="location">Execute Location:</Label>
           <Input
             id="location"
             type="text"
@@ -287,7 +287,7 @@ export default function SamGovOpportunitiesPage() {
                    <CardDescription>Type: {opportunity.type || 'N/A'}</CardDescription>
                    <CardDescription>Office Address: {opportunity.officeAddress || 'N/A'}</CardDescription>
                    <CardDescription>
-                     Location: {opportunity.location ? `${opportunity.location.city?.name || ''}, ${opportunity.location.state?.name || ''} ${opportunity.location.zip || ''}`.replace(/^,?\s*|\s*$/g, '') || 'N/A' : 'N/A'}
+                      Location: {opportunity.location ? `${opportunity.location.city?.name || ''}${opportunity.location.city?.name && opportunity.location.state?.name ? ', ' : ''}${opportunity.location.state?.name || ''} ${opportunity.location.zip || ''}`.trim() || 'N/A' : 'N/A'}
                    </CardDescription>
                    <CardDescription>Closing Date: {opportunity.closingDate || 'N/A'}</CardDescription>
                    <Button asChild size="sm" className="mt-2">
