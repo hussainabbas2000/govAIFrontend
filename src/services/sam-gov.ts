@@ -60,10 +60,10 @@ export interface SamGovOpportunity {
 export async function getSamGovOpportunities(
     searchCriteria: Record<string, string>
   ): Promise<SamGovOpportunity[]> {
-    const apiKey = process.env.NEXT_PUBLIC_SAM_GOV_API_KEY; // Ensure this is NEXT_PUBLIC_ for client-side access if needed, but API calls should be server-side
+    const apiKey = process.env.SAM_GOV_API_KEY; // Use SAM_GOV_API_KEY
 
     if (!apiKey) {
-      console.error('NEXT_PUBLIC_SAM_GOV_API_KEY is not set in environment variables.');
+      console.error('SAM_GOV_API_KEY is not set in environment variables.');
       // It's better to throw an error or return a specific error object
       // instead of an empty array to indicate configuration issues.
       // For now, returning empty array as per previous logic.
@@ -237,4 +237,3 @@ export async function getSamGovOpportunities(
     // Format required by SAM API: MM/DD/YYYY
     return `${mm}/${dd}/${yyyy}`;
   }
-```
