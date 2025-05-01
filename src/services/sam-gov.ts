@@ -75,12 +75,12 @@ export async function getSamGovOpportunities(
       ptype: 'o,k,p',
       postedFrom: getOneYearBackDate(),
       postedTo: getCurrentDate(),
-      limit: '1000',
+      //limit: '1000',
     };
 
     let allOpportunities: any[] = [];
     let offset = 0;
-    const limit = 1000;
+    const limit = 1;
     let hasMore = true;
 
     console.log("Fetching SAM.gov opportunities...");
@@ -193,6 +193,29 @@ export async function getSamGovOpportunities(
       description: opportunity.description || 'No description available.' // Use description directly
       }
     });
+
+
+    //descriptions
+    mappedOpportunities.map(async (opp) => {
+      const params = { api_key: String(apiKey) };
+      const queryString = new URLSearchParams(params).toString();
+      const url = `${opp.description}&${queryString}`;
+      
+      try {
+        const desc = await fetch(url);
+        if (!desc.ok) {
+          throw new Error(`HTTP error! status: ${desc.status}`);
+        }
+        const res = await desc.json();
+        opp.description = res.description
+      } catch (error) {
+        console.error("Error fetching or parsing data:", error);
+      }
+      
+    })
+
+
+
 
     console.log(`Returning ${mappedOpportunities.length} mapped opportunities.`);
     return mappedOpportunities;

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import {
@@ -15,78 +14,79 @@ import {
 import { Icons } from '@/components/icons';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { TotalListingsLabel } from '@/components/total-listings-label';
+import { TotalListingsLabel } from '@/components/total-listings-label'; // Correct import path
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe, DollarSign, Percent, Send, Trophy, Layers, CheckCircle, BellRing, Clock, FileCheck, SearchCode, CreditCard, CircleDollarSign, Lightbulb, Mail } from 'lucide-react'; // Added necessary icons
+import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe, DollarSign, Percent, Send, Trophy, Layers, CheckCircle, BellRing, Clock, FileCheck, SearchCode, CreditCard, CircleDollarSign, Lightbulb, Mail, UserCog } from 'lucide-react'; // Added UserCog for Preferences
 import { BidsByCategoryChart } from '@/components/dashboard/bids-by-category-chart';
 import { BidsByPortalChart } from '@/components/dashboard/bids-by-portal-chart'; // Import the new chart component
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 export default function Home() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [septaListingsCount, setSeptaListingsCount] = useState<number | null>(null);
+  const { toast } = useToast(); // Initialize toast
 
-  // Dummy data for Action Items - replace with actual data fetching later
-  const [actionItems, setActionItems] = useState({
-    bidsDueToday: 3,
-    pendingInvoices: 5,
-    bidsToApprove: 2,
-    newBidsFound: 8,
-  });
+   // Dummy data for Action Items - replace with actual data fetching later
+   const [actionItems, setActionItems] = useState({
+     bidsDueToday: 3,
+     pendingInvoices: 5,
+     bidsToApprove: 2,
+     newBidsFound: 8,
+   });
 
-  // Dummy data for Payments Summary
-  const [paymentSummary, setPaymentSummary] = useState({
-    outstanding: 12500.00,
-    netProfit: 5800.75,
-    paidInvoices: 42,
-  });
+   // Dummy data for Payments Summary
+   const [paymentSummary, setPaymentSummary] = useState({
+     outstanding: 12500.00,
+     netProfit: 5800.75,
+     paidInvoices: 42,
+   });
 
-  // Dummy data for Recommendations - structured for table
-  const [recommendations, setRecommendations] = useState([
-      { title: "IT Support Services", agency: "Dept. of Commerce", deadline: "2024-08-20" },
-      { title: "Janitorial Supplies", agency: "GSA", deadline: "2024-09-05" },
-      { title: "Fleet Vehicle Maintenance", agency: "SEPTA", deadline: "2024-08-30" },
-  ]);
-
+   // Dummy data for Recommendations - structured for table
+   const [recommendations, setRecommendations] = useState([
+       { title: "IT Support Services", agency: "Dept. of Commerce", deadline: "2024-08-20" },
+       { title: "Janitorial Supplies", agency: "GSA", deadline: "2024-09-05" },
+       { title: "Fleet Vehicle Maintenance", agency: "SEPTA", deadline: "2024-08-30" },
+   ]);
 
   useEffect(() => {
-    //  const fetchSeptaOpportunities = async () => {
-    //    try {
-    //      const response = await fetch('/api/run-python-script');
-    //      if (!response.ok) {
-    //        console.error(`HTTP error! status: ${response.status}`);
-    //        try {
-    //          const errorData = await response.json();
-    //          setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - ${errorData.error}`);
-    //        } catch (e) {
-    //          setError(`Failed to fetch SEPTA opportunities: HTTP ${response.status} - ${response.statusText}`);
-    //        }
-    //        setSeptaListingsCount(0); // Set count to 0 or handle error state appropriately
-    //        return;
-    //      }
-    //       // Assuming the python script updates the JSON file which is then imported
-    //       // Fetch the count from the potentially updated JSON data
-    //       // Note: This approach might lead to stale data if the script fails or runs async
-    //       // A better approach would be to have the API route return the count or data directly.
-    //      const septaResponse = await fetch('/api/septa'); // Assuming this endpoint reads the JSON
-    //      if(septaResponse.ok){
-    //         const data = await septaResponse.json();
-    //         setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
-    //      } else {
-    //         console.error("Could not fetch SEPTA data after script run");
-            setSeptaListingsCount(10); // Fallback dummy count
-    //      }
+    const fetchSeptaOpportunities = async () => {
+      try {
+        // Assuming the python script should run to update the JSON file first
+        const scriptResponse = await fetch('/api/run-python-script');
+        if (!scriptResponse.ok) {
+          console.error(`Python script execution failed: HTTP ${scriptResponse.status}`);
+          try {
+            const errorData = await scriptResponse.json();
+            setError(`Python script failed: HTTP ${scriptResponse.status} - ${errorData.error}`);
+          } catch (e) {
+             setError(`Python script failed: HTTP ${scriptResponse.status} - ${scriptResponse.statusText}`);
+          }
+          // Proceed to fetch potentially stale data or set error state
+        }
 
-    //    } catch (err: any) {
-    //      console.error('Error fetching SEPTA opportunities:', err);
-    //      setError(err.message || 'An unexpected error occurred while fetching SEPTA opportunities.');
-    //      setSeptaListingsCount(0);
-    //    }
-    //  };
+        // Now fetch the opportunities count from the JSON file via its API route
+        const septaResponse = await fetch('/api/septa'); // Fetch data from the API route
+        if (septaResponse.ok) {
+          const data = await septaResponse.json();
+          // Use dummy count for now as requested
+          setSeptaListingsCount(21); // Hardcoded dummy value
+        } else {
+          console.error("Could not fetch SEPTA data after script run attempt");
+          setError(`Failed to fetch SEPTA listings: HTTP ${septaResponse.status}`);
+          setSeptaListingsCount(0); // Indicate failure or unknown state
+        }
 
-    // fetchSeptaOpportunities();
+      } catch (err: any) {
+        console.error('Error fetching SEPTA opportunities:', err);
+        setError(err.message || 'An unexpected error occurred while fetching SEPTA opportunities.');
+        setSeptaListingsCount(0);
+      }
+    };
+
+    fetchSeptaOpportunities();
   }, []);
 
 
@@ -130,7 +130,7 @@ export default function Home() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
                <SidebarMenuItem>
-                <SidebarMenuButton onClick={() => { /* Navigate to Recommendations */ }}>
+                <SidebarMenuButton onClick={() => navigateTo('/recommendations')}>
                   <TrendingUp className="h-4 w-4" />
                   <span>Recommendations</span>
                 </SidebarMenuButton>
@@ -145,6 +145,12 @@ export default function Home() {
           </SidebarContent>
            <SidebarFooter className="mt-auto">
              <SidebarMenu>
+                <SidebarMenuItem>
+                 <SidebarMenuButton onClick={() => navigateTo('/preferences')}>
+                   <UserCog className="h-4 w-4" />
+                   <span>Preferences</span>
+                 </SidebarMenuButton>
+               </SidebarMenuItem>
                <SidebarMenuItem>
                  <SidebarMenuButton onClick={() => { /* Navigate to Settings */ }}>
                    <Settings className="h-4 w-4" />
@@ -468,7 +474,14 @@ export default function Home() {
                      ) : (
                         <p className="text-sm text-muted-foreground italic text-center py-4">No recommendations available.</p>
                      )}
-                     <Button variant="outline" size="sm" className="mt-4 w-full">View All Recommendations</Button>
+                      <Button
+                       variant="outline"
+                       size="sm"
+                       className="mt-4 w-full"
+                       onClick={() => navigateTo('/recommendations')} // Navigate to recommendations page
+                     >
+                       View All Recommendations
+                     </Button>
                   </CardContent>
                </Card>
 
