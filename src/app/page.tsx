@@ -52,41 +52,41 @@ export default function Home() {
    ]);
 
   useEffect(() => {
-    const fetchSeptaOpportunities = async () => {
-      try {
-        // Assuming the python script should run to update the JSON file first
-        const scriptResponse = await fetch('/api/run-python-script');
-        if (!scriptResponse.ok) {
-          console.error(`Python script execution failed: HTTP ${scriptResponse.status}`);
-          try {
-            const errorData = await scriptResponse.json();
-            setError(`Python script failed: HTTP ${scriptResponse.status} - ${errorData.error}`);
-          } catch (e) {
-             setError(`Python script failed: HTTP ${scriptResponse.status} - ${scriptResponse.statusText}`);
-          }
-          // Proceed to fetch potentially stale data or set error state
-        }
+    // const fetchSeptaOpportunities = async () => {
+    //   try {
+    //     // Assuming the python script should run to update the JSON file first
+    //     const scriptResponse = await fetch('/api/run-python-script');
+    //     if (!scriptResponse.ok) {
+    //       console.error(`Python script execution failed: HTTP ${scriptResponse.status}`);
+    //       try {
+    //         const errorData = await scriptResponse.json();
+    //         setError(`Python script failed: HTTP ${scriptResponse.status} - ${errorData.error}`);
+    //       } catch (e) {
+    //          setError(`Python script failed: HTTP ${scriptResponse.status} - ${scriptResponse.statusText}`);
+    //       }
+    //       // Proceed to fetch potentially stale data or set error state
+    //     }
 
-        // Now fetch the opportunities count from the JSON file via its API route
-        const septaResponse = await fetch('/api/septa'); // Fetch data from the API route
-        if (septaResponse.ok) {
-          const data = await septaResponse.json();
-          // Use dummy count for now as requested
+    //     // Now fetch the opportunities count from the JSON file via its API route
+    //     const septaResponse = await fetch('/api/septa'); // Fetch data from the API route
+    //     if (septaResponse.ok) {
+    //       const data = await septaResponse.json();
+    //       // Use dummy count for now as requested
           setSeptaListingsCount(21); // Hardcoded dummy value
-        } else {
-          console.error("Could not fetch SEPTA data after script run attempt");
-          setError(`Failed to fetch SEPTA listings: HTTP ${septaResponse.status}`);
-          setSeptaListingsCount(0); // Indicate failure or unknown state
-        }
+    //     } else {
+    //       console.error("Could not fetch SEPTA data after script run attempt");
+    //       setError(`Failed to fetch SEPTA listings: HTTP ${septaResponse.status}`);
+    //       setSeptaListingsCount(0); // Indicate failure or unknown state
+    //     }
 
-      } catch (err: any) {
-        console.error('Error fetching SEPTA opportunities:', err);
-        setError(err.message || 'An unexpected error occurred while fetching SEPTA opportunities.');
-        setSeptaListingsCount(0);
-      }
-    };
+    //   } catch (err: any) {
+    //     console.error('Error fetching SEPTA opportunities:', err);
+    //     setError(err.message || 'An unexpected error occurred while fetching SEPTA opportunities.');
+    //     setSeptaListingsCount(0);
+    //   }
+    // };
 
-    fetchSeptaOpportunities();
+    // fetchSeptaOpportunities();
   }, []);
 
 

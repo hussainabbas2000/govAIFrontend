@@ -57,6 +57,8 @@ export default function PreferencesPage() {
           title: "Preferences Saved",
           description: "Your preferences have been successfully updated.",
         });
+
+        console.log(localStorage.getItem('userPreferences'))
     } catch (error) {
         console.error('Failed to save preferences:', error);
         toast({
