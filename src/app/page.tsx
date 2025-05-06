@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -12,7 +11,7 @@ import {
   SidebarProvider,
 } from '@/components/ui/sidebar';
 import { Icons } from '@/components/icons';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation'; // Import usePathname
 import { useEffect, useState } from 'react';
 import { TotalListingsLabel } from '@/components/total-listings-label'; // Correct import path
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,6 +40,7 @@ export interface OngoingBid {
 
 export default function Home() {
   const router = useRouter();
+  const pathname = usePathname(); // Get current pathname
   const [error, setError] = useState<string | null>(null);
   const [septaListingsCount, setSeptaListingsCount] = useState<number | null>(null);
   const [samListingsCount, setSamListingsCount] = useState<number | null>(null);
@@ -79,38 +79,38 @@ export default function Home() {
   useEffect(() => {
     if (isClient) {
       // Fetch SEPTA listings count
-      const fetchSeptaData = async () => {
-        try {
-          const scriptResponse = await fetch('/api/run-python-script');
-          if (!scriptResponse.ok) {
-            console.error(`Python script execution failed: HTTP ${scriptResponse.status}`);
-            try {
-              const errorData = await scriptResponse.json();
-              setError(`Python script failed: HTTP ${scriptResponse.status} - ${errorData.error}`);
-            } catch (e) {
-              setError(`Python script failed: HTTP ${scriptResponse.status} - ${scriptResponse.statusText}`);
-            }
+      // const fetchSeptaData = async () => {
+      //   try {
+      //     const scriptResponse = await fetch('/api/run-python-script');
+      //     if (!scriptResponse.ok) {
+      //       console.error(`Python script execution failed: HTTP ${scriptResponse.status}`);
+      //       try {
+      //         const errorData = await scriptResponse.json();
+      //         setError(`Python script failed: HTTP ${scriptResponse.status} - ${errorData.error}`);
+      //       } catch (e) {
+      //         setError(`Python script failed: HTTP ${scriptResponse.status} - ${scriptResponse.statusText}`);
+      //       }
+      //       setSeptaListingsCount(0);
+      //       return;
+      //     }
+      //      // If script runs, assume septa_open_quotes.json is updated.
+      //      // Then fetch from the local JSON file via API.
+      //     const septaResponse = await fetch('/api/septa-listings');
+      //     if (septaResponse.ok) {
+      //       const data = await septaResponse.json();
+      //       setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
+      //     } else {
+      //       console.error("Could not fetch SEPTA listings count");
+      //       setError(`Failed to fetch SEPTA listings count: HTTP ${septaResponse.status}`);
             setSeptaListingsCount(0);
-            return;
-          }
-           // If script runs, assume septa_open_quotes.json is updated.
-           // Then fetch from the local JSON file via API.
-          const septaResponse = await fetch('/api/septa-listings');
-          if (septaResponse.ok) {
-            const data = await septaResponse.json();
-            setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
-          } else {
-            console.error("Could not fetch SEPTA listings count");
-            setError(`Failed to fetch SEPTA listings count: HTTP ${septaResponse.status}`);
-            setSeptaListingsCount(0);
-          }
-        } catch (err: any) {
-          console.error('Error processing SEPTA data:', err);
-          setError(err.message || 'An unexpected error occurred while processing SEPTA data.');
-          setSeptaListingsCount(0);
-        }
-      };
-      fetchSeptaData();
+      //     }
+      //   } catch (err: any) {
+      //     console.error('Error processing SEPTA data:', err);
+      //     setError(err.message || 'An unexpected error occurred while processing SEPTA data.');
+      //     setSeptaListingsCount(0);
+      //   }
+      // };
+      // fetchSeptaData();
 
       // Fetch SAM.gov listings count (using dummy data logic for now)
       // This should ideally come from the actual data source or a count API if available
@@ -127,17 +127,24 @@ export default function Home() {
       });
 
       // Load ongoing bids from localStorage
+      console.log("Home page useEffect triggered, re-fetching ongoing bids from localStorage.");
       const storedBids = localStorage.getItem('ongoingBids');
       if (storedBids) {
         try {
-          setOngoingBids(JSON.parse(storedBids));
+          const parsedBids = JSON.parse(storedBids);
+          setOngoingBids(parsedBids);
+          console.log("Loaded ongoing bids:", parsedBids);
         } catch (e) {
           console.error("Failed to parse ongoing bids from localStorage", e);
           localStorage.removeItem('ongoingBids'); // Clear corrupted data
+          setOngoingBids([]); // Reset to empty array
         }
+      } else {
+         setOngoingBids([]); // No bids found, ensure it's an empty array
+         console.log("No ongoing bids found in localStorage.");
       }
     }
-  }, [isClient]);
+  }, [isClient, pathname]); // Add pathname as a dependency
 
 
   const navigateTo = (path: string) => {
