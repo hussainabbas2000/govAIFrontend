@@ -26,22 +26,26 @@ import { Badge } from "@/components/ui/badge"; // Import Badge component
 import { cn } from '@/lib/utils'; // Import cn utility function
 
 // Define bid states type
-type BidStatus = "Drafting" | "RFQs Sent" | "Quotes Received" | "Final Quotes Selected" | "Bid Submitted" | "Bid Approved" | "Bid Completed" | "Clarification";
+export type BidStatus = "Drafting" | "RFQs Sent" | "Quotes Received" | "Final Quotes Selected" | "Bid Submitted" | "Bid Approved" | "Bid Completed" | "Clarification";
 
 // Define structure for ongoing bids
-interface OngoingBid {
-  id: string;
+export interface OngoingBid {
+  id: string; // Unique ID, can be the opportunity ID
   title: string;
   agency: string;
   status: BidStatus;
-  deadline: string;
+  deadline: string; // Should be a date string, ideally ISO
+  source: 'SAM.gov' | 'SEPTA'; // To distinguish where the bid came from
+  linkToOpportunity?: string; // Optional link back to the original opportunity details
 }
 
 export default function Home() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [septaListingsCount, setSeptaListingsCount] = useState<number | null>(null);
+  const [samListingsCount, setSamListingsCount] = useState<number | null>(null);
   const { toast } = useToast(); // Initialize toast
+  const [isClient, setIsClient] = useState(false);
 
    // Dummy data for Action Items - replace with actual data fetching later
    const [actionItems, setActionItems] = useState({
@@ -65,55 +69,75 @@ export default function Home() {
        { title: "Fleet Vehicle Maintenance", agency: "SEPTA", deadline: "2024-08-30" },
    ]);
 
-    // Dummy data for Ongoing Bids - with new states
-   const [ongoingBids, setOngoingBids] = useState<OngoingBid[]>([
-     { id: "bid1", title: "IT Support Services", agency: "Dept. of Commerce", status: "Drafting", deadline: "2024-08-15" },
-     { id: "bid2", title: "Office Supplies RFQ", agency: "GSA", status: "RFQs Sent", deadline: "2024-07-30" },
-     { id: "bid3", title: "Construction Project X", agency: "SEPTA", status: "Clarification", deadline: "2024-09-01" },
-     { id: "bid4", title: "Cybersecurity Assessment", agency: "DHS", status: "Quotes Received", deadline: "2024-09-10" },
-     { id: "bid5", title: "Cloud Migration", agency: "GSA", status: "Bid Submitted", deadline: "2024-08-25" },
-     { id: "bid6", title: "Vehicle Fleet Upgrade", agency: "DoT", status: "Bid Approved", deadline: "2024-10-05" },
-     { id: "bid7", title: "Janitorial Services Contract", agency: "EPA", status: "Bid Completed", deadline: "2024-07-20" },
-     { id: "bid8", title: "Software Development", agency: "NIH", status: "Final Quotes Selected", deadline: "2024-09-18" },
-   ]);
+   const [ongoingBids, setOngoingBids] = useState<OngoingBid[]>([]);
 
   useEffect(() => {
-    const fetchSeptaOpportunities = async () => {
-      try {
-        // Assuming the python script should run to update the JSON file first
-        const scriptResponse = await fetch('/api/run-python-script');
-        if (!scriptResponse.ok) {
-          console.error(`Python script execution failed: HTTP ${scriptResponse.status}`);
-          try {
-            const errorData = await scriptResponse.json();
-            setError(`Python script failed: HTTP ${scriptResponse.status} - ${errorData.error}`);
-          } catch (e) {
-             setError(`Python script failed: HTTP ${scriptResponse.status} - ${scriptResponse.statusText}`);
-          }
-          // Proceed to fetch potentially stale data or set error state
-        }
-
-        // Now fetch the opportunities count from the JSON file via its API route
-        const septaResponse = await fetch('/api/septa'); // Fetch data from the API route
-        if (septaResponse.ok) {
-          const data = await septaResponse.json();
-          // Use dummy count for now as requested
-          setSeptaListingsCount(21); // Hardcoded dummy value
-        } else {
-          console.error("Could not fetch SEPTA data after script run attempt");
-          setError(`Failed to fetch SEPTA listings: HTTP ${septaResponse.status}`);
-          setSeptaListingsCount(0); // Indicate failure or unknown state
-        }
-
-      } catch (err: any) {
-        console.error('Error fetching SEPTA opportunities:', err);
-        setError(err.message || 'An unexpected error occurred while fetching SEPTA opportunities.');
-        setSeptaListingsCount(0);
-      }
-    };
-
-    fetchSeptaOpportunities();
+    setIsClient(true); // Indicate component has mounted
   }, []);
+
+
+  useEffect(() => {
+    if (isClient) {
+      // Fetch SEPTA listings count
+      const fetchSeptaData = async () => {
+        try {
+          const scriptResponse = await fetch('/api/run-python-script');
+          if (!scriptResponse.ok) {
+            console.error(`Python script execution failed: HTTP ${scriptResponse.status}`);
+            try {
+              const errorData = await scriptResponse.json();
+              setError(`Python script failed: HTTP ${scriptResponse.status} - ${errorData.error}`);
+            } catch (e) {
+              setError(`Python script failed: HTTP ${scriptResponse.status} - ${scriptResponse.statusText}`);
+            }
+            setSeptaListingsCount(0);
+            return;
+          }
+           // If script runs, assume septa_open_quotes.json is updated.
+           // Then fetch from the local JSON file via API.
+          const septaResponse = await fetch('/api/septa-listings');
+          if (septaResponse.ok) {
+            const data = await septaResponse.json();
+            setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
+          } else {
+            console.error("Could not fetch SEPTA listings count");
+            setError(`Failed to fetch SEPTA listings count: HTTP ${septaResponse.status}`);
+            setSeptaListingsCount(0);
+          }
+        } catch (err: any) {
+          console.error('Error processing SEPTA data:', err);
+          setError(err.message || 'An unexpected error occurred while processing SEPTA data.');
+          setSeptaListingsCount(0);
+        }
+      };
+      fetchSeptaData();
+
+      // Fetch SAM.gov listings count (using dummy data logic for now)
+      // This should ideally come from the actual data source or a count API if available
+      // For now, mimicking the dummy data length from sam-gov.ts
+      // Replace this with actual fetch if sam-gov.ts provides a count or if an API for count exists
+      import('@/services/sam-gov').then(module => {
+        // Simulating fetching and getting length. Replace with actual API call if available.
+        module.getSamGovOpportunities({}).then(data => {
+          setSamListingsCount(data.length);
+        }).catch(e => {
+            console.error("Error fetching SAM.gov count:", e);
+            setSamListingsCount(0);
+        });
+      });
+
+      // Load ongoing bids from localStorage
+      const storedBids = localStorage.getItem('ongoingBids');
+      if (storedBids) {
+        try {
+          setOngoingBids(JSON.parse(storedBids));
+        } catch (e) {
+          console.error("Failed to parse ongoing bids from localStorage", e);
+          localStorage.removeItem('ongoingBids'); // Clear corrupted data
+        }
+      }
+    }
+  }, [isClient]);
 
 
   const navigateTo = (path: string) => {
@@ -284,8 +308,7 @@ export default function Home() {
                 <CardContent>
                   <CardDescription>Federal contracting opportunities.</CardDescription>
                   <div className="mt-4 flex items-center justify-between">
-                     {/* Placeholder total, update with actual data */}
-                     <TotalListingsLabel total={100} loading={false} />
+                     <TotalListingsLabel total={samListingsCount} loading={samListingsCount === null} />
                     <Button onClick={() => navigateTo('/sam-gov')} size="sm" variant="outline" className="text-primary border-primary hover:bg-primary/10">View</Button>
                   </div>
                 </CardContent>
@@ -588,3 +611,5 @@ export default function Home() {
   );
 }
 
+
+    

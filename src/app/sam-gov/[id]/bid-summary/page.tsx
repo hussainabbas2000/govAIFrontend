@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -12,10 +13,13 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, List } from 'lucide-react'; // Import Terminal and List icons
+import type { OngoingBid } from '@/app/page'; // Import OngoingBid type
 
 interface BidSummary extends SummarizeContractOpportunityOutput {
   title: string;
   id: string;
+  agency: string; // Add agency for OngoingBid
+  originalOpportunity: SamGovOpportunity; // Keep original for link
 }
 
 export default function BidSummaryPage() {
@@ -25,8 +29,15 @@ export default function BidSummaryPage() {
   const [summary, setSummary] = useState<BidSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+
     const fetchAndSummarizeOpportunity = async () => {
       if (!id) return;
 
@@ -35,7 +46,6 @@ export default function BidSummaryPage() {
 
       try {
         // 1. Fetch the specific opportunity details
-        // Using the cached/dummy data approach from getSamGovOpportunities
         const allOpportunities = await getSamGovOpportunities({});
         const opportunity = allOpportunities.find(opp => opp.id === id);
 
@@ -50,8 +60,10 @@ export default function BidSummaryPage() {
 
         setSummary({
           ...aiSummary,
-          title: opportunity.title, // Add original title for context
+          title: opportunity.title,
           id: opportunity.id,
+          agency: opportunity.department || 'N/A', // Use department as agency
+          originalOpportunity: opportunity,
         });
 
       } catch (err: any) {
@@ -64,7 +76,49 @@ export default function BidSummaryPage() {
     };
 
     fetchAndSummarizeOpportunity();
-  }, [id]);
+  }, [id, isClient]);
+
+  const handleProceedToQuoteRequest = () => {
+    if (!summary || !isClient) return;
+
+    const newBid: OngoingBid = {
+      id: summary.id,
+      title: summary.title,
+      agency: summary.agency,
+      status: "Drafting", // Initial status
+      deadline: summary.originalOpportunity.closingDate || 'N/A',
+      source: 'SAM.gov',
+      linkToOpportunity: `/sam-gov/${summary.id}`,
+    };
+
+    // Retrieve existing bids from localStorage, or initialize if none
+    const existingBidsString = localStorage.getItem('ongoingBids');
+    let existingBids: OngoingBid[] = [];
+    if (existingBidsString) {
+      try {
+        existingBids = JSON.parse(existingBidsString);
+      } catch (e) {
+        console.error("Failed to parse existing bids from localStorage", e);
+        // Potentially clear corrupted data
+        localStorage.removeItem('ongoingBids');
+      }
+    }
+
+    // Check if bid already exists to avoid duplicates
+    if (!existingBids.find(b => b.id === newBid.id)) {
+      const updatedBids = [...existingBids, newBid];
+      localStorage.setItem('ongoingBids', JSON.stringify(updatedBids));
+      console.log("Bid added to ongoing bids:", newBid);
+      // Optionally, show a toast notification
+    } else {
+      console.log("Bid already in ongoing bids list.");
+    }
+
+    // Navigate to the next step (e.g., RFQ page, not yet implemented)
+    // router.push(`/rfq/${summary.id}`);
+    alert("Bid added to Ongoing Bids on Dashboard (Status: Drafting). RFQ page not yet implemented.");
+  };
+
 
   if (loading) {
     return <Loading />;
@@ -142,7 +196,7 @@ export default function BidSummaryPage() {
             {/* Placeholder for next steps/buttons */}
             <div className="mt-8 pt-6 border-t flex justify-end space-x-3">
               <Button variant="outline">Save Summary</Button>
-              <Button>Proceed to Quote Request</Button>
+              <Button onClick={handleProceedToQuoteRequest} disabled={!isClient}>Proceed to Quote Request</Button>
             </div>
           </CardContent>
         </Card>
@@ -169,3 +223,6 @@ export default function BidSummaryPage() {
     </main>
   );
 }
+
+
+    
