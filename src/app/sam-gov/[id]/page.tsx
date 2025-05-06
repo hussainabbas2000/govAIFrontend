@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -6,11 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import { getSamGovOpportunities, SamGovOpportunity } from '@/services/sam-gov';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import Loading from '@/app/loading';
+import Loading from '@/app/loading'; // Use the central loading component
 import { Icons } from '@/components/icons';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns'; // Import parseISO
 import { Label } from '@/components/ui/label'; // Import Label component
 import { Skeleton } from '@/components/ui/skeleton';
+import Link from 'next/link'; // Import Link for navigation
 
 export default function SamGovOpportunityPage() {
   const params = useParams();
@@ -19,7 +19,7 @@ export default function SamGovOpportunityPage() {
   const [opportunity, setOpportunity] = useState<SamGovOpportunity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [description, setDescription] = useState<string | null>(null);
+  const [description, setDescription] = useState<string | null>(null); // Use state for description
 
   useEffect(() => {
     const fetchOpportunityDetails = async () => {
@@ -30,47 +30,16 @@ export default function SamGovOpportunityPage() {
       setDescription(null); // Reset description
 
       try {
-        // Fetch all opportunities (or specific one if API supports it)
-        // Using the cached approach from getSamGovOpportunities
+        // Using the cached/dummy data approach from getSamGovOpportunities
+        // Pass an empty object or specific criteria if needed, though for fetching one item,
+        // filtering the full list is the current approach with dummy/cached data.
         const allOpportunities = await getSamGovOpportunities({});
         const foundOpportunity = allOpportunities.find(opp => opp.id === id);
 
         if (foundOpportunity) {
           setOpportunity(foundOpportunity);
-
-          // Check if description is a URL and fetch it (commented out - using dummy data)
-          /*
-          if (foundOpportunity.description && foundOpportunity.description.startsWith('http')) {
-            const apiKey = process.env.NEXT_PUBLIC_SAM_GOV_API_KEY;
-            if (!apiKey) {
-              console.warn('API key missing, cannot fetch full description.');
-              setDescription('API key missing, full description unavailable.');
-            } else {
-              try {
-                const descResponse = await fetch(`${foundOpportunity.description}&api_key=${apiKey}`);
-                if (descResponse.ok) {
-                  const descData = await descResponse.json();
-                  // Extract the actual description text from the response structure
-                  // Adjust the path based on the actual API response format for descriptions
-                  const actualDesc = descData?.description || descData?.opportunity?.description || 'Full description not found in response.';
-                  setDescription(actualDesc);
-                } else {
-                  console.error(`Failed to fetch description (${descResponse.status})`);
-                  setDescription('Failed to load full description.');
-                }
-              } catch (descError) {
-                console.error('Error fetching description:', descError);
-                setDescription('Error loading full description.');
-              }
-            }
-          } else {
-            // Use the potentially truncated description if it's not a URL
-            setDescription(foundOpportunity.description || 'No description available.');
-          }
-          */
-         // Use dummy description directly for now
-         setDescription(foundOpportunity.description || 'No description available.');
-
+          // Set description directly from the found opportunity (dummy data has it)
+          setDescription(foundOpportunity.description || 'No description available.');
         } else {
           setError('Opportunity not found.');
           setOpportunity(null);
@@ -88,7 +57,7 @@ export default function SamGovOpportunityPage() {
   }, [id]);
 
   if (loading) {
-    return <Loading />;
+    return <Loading />; // Show loading screen
   }
 
   if (error) {
@@ -120,8 +89,18 @@ export default function SamGovOpportunityPage() {
   // Helper to safely render location
   const renderLocation = (loc: SamGovOpportunity['location']) => {
     if (!loc) return 'N/A';
-    return `${loc.city?.name || ''}${loc.city?.name && loc.state?.name ? ', ' : ''}${loc.state?.name || ''} ${loc.zip || ''}`.trim() || 'N/A';
+    const parts = [
+      loc.city?.name,
+      loc.state?.name,
+      loc.zip
+    ].filter(Boolean); // Filter out undefined/null parts
+    return parts.join(', ') || 'N/A'; // Join with comma and space, or return N/A
   };
+
+  // Format date safely
+   const formattedClosingDate = opportunity.closingDate
+     ? format(parseISO(opportunity.closingDate), 'PPP HH:mm zzz') // Use parseISO for ISO strings
+     : 'N/A';
 
   return (
     <main className="flex-1 p-6 bg-gradient-to-br from-secondary/30 to-background animate-fadeIn">
@@ -155,16 +134,20 @@ export default function SamGovOpportunityPage() {
                 <Label className="font-semibold text-primary">Office</Label>
                 <p>{opportunity.office || 'N/A'}</p>
               </div>
-               <div className="opacity-90 transition-opacity hover:opacity-100">
-                 <Label className="font-semibold text-primary">Original Link</Label>
+              <div className="opacity-90 transition-opacity hover:opacity-100">
+                <Label className="font-semibold text-primary">Original Link</Label>
+                {opportunity.link && opportunity.link !== '#' ? (
                   <a
-                      href={opportunity.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-accent hover:underline break-all flex items-center gap-1"
+                    href={opportunity.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent hover:underline break-all flex items-center gap-1"
                   >
-                      View on SAM.gov <Icons.externalLink className="h-3 w-3"/>
+                    View on SAM.gov <Icons.externalLink className="h-3 w-3" />
                   </a>
+                ) : (
+                  <p>N/A</p>
+                )}
               </div>
             </div>
 
@@ -184,7 +167,7 @@ export default function SamGovOpportunityPage() {
               </div>
               <div className="opacity-90 transition-opacity hover:opacity-100">
                 <Label className="font-semibold text-primary">Closing Date</Label>
-                <p>{opportunity.closingDate ? format(new Date(opportunity.closingDate), 'PPP HH:mm zzz') : 'N/A'}</p>
+                <p>{formattedClosingDate}</p>
               </div>
             </div>
 
@@ -192,11 +175,20 @@ export default function SamGovOpportunityPage() {
             <div className="md:col-span-2 pt-4 border-t mt-4">
               <Label className="text-xl font-semibold text-primary mb-2 block">Description</Label>
               {description === null ? (
-                 <Skeleton className="h-20 w-full" /> // Show skeleton while description loads
-               ) : (
+                <Skeleton className="h-20 w-full" /> // Show skeleton while description loads/resolves
+              ) : (
                 // Use prose for better text formatting, break-words to prevent overflow
-                 <p className="text-foreground prose prose-sm max-w-none break-words whitespace-pre-wrap">{description}</p>
+                <p className="text-foreground prose prose-sm max-w-none break-words whitespace-pre-wrap">{description}</p>
               )}
+            </div>
+
+            {/* Start Bidding Button */}
+            <div className="md:col-span-2 mt-6 flex justify-end">
+              <Button asChild size="lg">
+                <Link href={`/sam-gov/${id}/bid-summary`}>
+                  Start Bidding Process
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>
