@@ -18,10 +18,23 @@ import { TotalListingsLabel } from '@/components/total-listings-label'; // Corre
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe, DollarSign, Percent, Send, Trophy, Layers, CheckCircle, BellRing, Clock, FileCheck, SearchCode, CreditCard, CircleDollarSign, Lightbulb, Mail, UserCog } from 'lucide-react'; // Added UserCog for Preferences
+import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe, DollarSign, Percent, Send, Trophy, Layers, CheckCircle, BellRing, Clock, FileCheck, SearchCode, CreditCard, CircleDollarSign, Lightbulb, Mail, UserCog, CircleDot, SendHorizonal, Check, PackageCheck, Handshake, ListChecks, FileClock } from 'lucide-react'; // Added UserCog for Preferences and bid state icons
 import { BidsByCategoryChart } from '@/components/dashboard/bids-by-category-chart';
 import { BidsByPortalChart } from '@/components/dashboard/bids-by-portal-chart'; // Import the new chart component
 import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { Badge } from "@/components/ui/badge"; // Import Badge component
+
+// Define bid states type
+type BidStatus = "Drafting" | "RFQs Sent" | "Quotes Received" | "Final Quotes Selected" | "Bid Submitted" | "Bid Approved" | "Bid Completed" | "Clarification";
+
+// Define structure for ongoing bids
+interface OngoingBid {
+  id: string;
+  title: string;
+  agency: string;
+  status: BidStatus;
+  deadline: string;
+}
 
 export default function Home() {
   const router = useRouter();
@@ -51,48 +64,119 @@ export default function Home() {
        { title: "Fleet Vehicle Maintenance", agency: "SEPTA", deadline: "2024-08-30" },
    ]);
 
+    // Dummy data for Ongoing Bids - with new states
+   const [ongoingBids, setOngoingBids] = useState<OngoingBid[]>([
+     { id: "bid1", title: "IT Support Services", agency: "Dept. of Commerce", status: "Drafting", deadline: "2024-08-15" },
+     { id: "bid2", title: "Office Supplies RFQ", agency: "GSA", status: "RFQs Sent", deadline: "2024-07-30" },
+     { id: "bid3", title: "Construction Project X", agency: "SEPTA", status: "Clarification", deadline: "2024-09-01" },
+     { id: "bid4", title: "Cybersecurity Assessment", agency: "DHS", status: "Quotes Received", deadline: "2024-09-10" },
+     { id: "bid5", title: "Cloud Migration", agency: "GSA", status: "Bid Submitted", deadline: "2024-08-25" },
+     { id: "bid6", title: "Vehicle Fleet Upgrade", agency: "DoT", status: "Bid Approved", deadline: "2024-10-05" },
+     { id: "bid7", title: "Janitorial Services Contract", agency: "EPA", status: "Bid Completed", deadline: "2024-07-20" },
+     { id: "bid8", title: "Software Development", agency: "NIH", status: "Final Quotes Selected", deadline: "2024-09-18" },
+   ]);
+
   useEffect(() => {
-    // const fetchSeptaOpportunities = async () => {
-    //   try {
-    //     // Assuming the python script should run to update the JSON file first
-    //     const scriptResponse = await fetch('/api/run-python-script');
-    //     if (!scriptResponse.ok) {
-    //       console.error(`Python script execution failed: HTTP ${scriptResponse.status}`);
-    //       try {
-    //         const errorData = await scriptResponse.json();
-    //         setError(`Python script failed: HTTP ${scriptResponse.status} - ${errorData.error}`);
-    //       } catch (e) {
-    //          setError(`Python script failed: HTTP ${scriptResponse.status} - ${scriptResponse.statusText}`);
-    //       }
-    //       // Proceed to fetch potentially stale data or set error state
-    //     }
+    const fetchSeptaOpportunities = async () => {
+      try {
+        // Assuming the python script should run to update the JSON file first
+        const scriptResponse = await fetch('/api/run-python-script');
+        if (!scriptResponse.ok) {
+          console.error(`Python script execution failed: HTTP ${scriptResponse.status}`);
+          try {
+            const errorData = await scriptResponse.json();
+            setError(`Python script failed: HTTP ${scriptResponse.status} - ${errorData.error}`);
+          } catch (e) {
+             setError(`Python script failed: HTTP ${scriptResponse.status} - ${scriptResponse.statusText}`);
+          }
+          // Proceed to fetch potentially stale data or set error state
+        }
 
-    //     // Now fetch the opportunities count from the JSON file via its API route
-    //     const septaResponse = await fetch('/api/septa'); // Fetch data from the API route
-    //     if (septaResponse.ok) {
-    //       const data = await septaResponse.json();
-    //       // Use dummy count for now as requested
+        // Now fetch the opportunities count from the JSON file via its API route
+        const septaResponse = await fetch('/api/septa'); // Fetch data from the API route
+        if (septaResponse.ok) {
+          const data = await septaResponse.json();
+          // Use dummy count for now as requested
           setSeptaListingsCount(21); // Hardcoded dummy value
-    //     } else {
-    //       console.error("Could not fetch SEPTA data after script run attempt");
-    //       setError(`Failed to fetch SEPTA listings: HTTP ${septaResponse.status}`);
-    //       setSeptaListingsCount(0); // Indicate failure or unknown state
-    //     }
+        } else {
+          console.error("Could not fetch SEPTA data after script run attempt");
+          setError(`Failed to fetch SEPTA listings: HTTP ${septaResponse.status}`);
+          setSeptaListingsCount(0); // Indicate failure or unknown state
+        }
 
-    //   } catch (err: any) {
-    //     console.error('Error fetching SEPTA opportunities:', err);
-    //     setError(err.message || 'An unexpected error occurred while fetching SEPTA opportunities.');
-    //     setSeptaListingsCount(0);
-    //   }
-    // };
+      } catch (err: any) {
+        console.error('Error fetching SEPTA opportunities:', err);
+        setError(err.message || 'An unexpected error occurred while fetching SEPTA opportunities.');
+        setSeptaListingsCount(0);
+      }
+    };
 
-    // fetchSeptaOpportunities();
+    fetchSeptaOpportunities();
   }, []);
 
 
   const navigateTo = (path: string) => {
     router.push(path);
   };
+
+   // Helper function to get badge variant based on status
+   const getStatusBadgeVariant = (status: BidStatus): "default" | "secondary" | "destructive" | "outline" => {
+     switch (status) {
+       case "Drafting":
+         return "outline"; // Grayish
+       case "RFQs Sent":
+       case "Quotes Received":
+       case "Final Quotes Selected":
+       case "Bid Submitted":
+         return "default"; // Primary blue
+       case "Clarification":
+         return "secondary"; // Yellowish/orange
+       case "Bid Approved":
+       case "Bid Completed":
+         return "default"; // Use success styling below
+       default:
+         return "outline";
+     }
+   };
+
+   const getStatusBadgeClass = (status: BidStatus): string => {
+      switch (status) {
+         case "Drafting":
+             return "bg-gray-100 text-gray-700 border-gray-300";
+         case "RFQs Sent":
+             return "bg-blue-100 text-blue-700 border-blue-300";
+         case "Quotes Received":
+             return "bg-indigo-100 text-indigo-700 border-indigo-300";
+         case "Final Quotes Selected":
+             return "bg-purple-100 text-purple-700 border-purple-300";
+          case "Bid Submitted":
+             return "bg-cyan-100 text-cyan-700 border-cyan-300";
+         case "Clarification":
+             return "bg-yellow-100 text-yellow-700 border-yellow-300";
+         case "Bid Approved":
+             return "bg-lime-100 text-lime-700 border-lime-300";
+         case "Bid Completed":
+             return "bg-green-100 text-green-700 border-green-300";
+         default:
+             return "bg-gray-100 text-gray-700 border-gray-300";
+       }
+   }
+
+   // Helper function to get icon based on status
+   const getStatusIcon = (status: BidStatus) => {
+      switch (status) {
+          case "Drafting": return <FileText className="mr-1 h-3 w-3" />;
+          case "RFQs Sent": return <SendHorizonal className="mr-1 h-3 w-3" />;
+          case "Quotes Received": return <PackageCheck className="mr-1 h-3 w-3" />;
+          case "Final Quotes Selected": return <ListChecks className="mr-1 h-3 w-3" />;
+          case "Bid Submitted": return <Send className="mr-1 h-3 w-3" />;
+          case "Clarification": return <FileClock className="mr-1 h-3 w-3" />;
+          case "Bid Approved": return <Handshake className="mr-1 h-3 w-3" />;
+          case "Bid Completed": return <CheckCircle className="mr-1 h-3 w-3" />;
+          default: return <CircleDot className="mr-1 h-3 w-3" />;
+      }
+   }
+
 
   return (
     <SidebarProvider>
@@ -285,29 +369,28 @@ export default function Home() {
                        </TableRow>
                      </TableHeader>
                      <TableBody>
-                       {/* Placeholder Rows - Replace with actual data */}
-                       <TableRow>
-                         <TableCell className="font-medium">IT Support Services</TableCell>
-                         <TableCell>Dept. of Commerce</TableCell>
-                         <TableCell><span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">Drafting</span></TableCell>
-                         <TableCell className="text-right">2024-08-15</TableCell>
-                       </TableRow>
-                       <TableRow>
-                         <TableCell className="font-medium">Office Supplies RFQ</TableCell>
-                         <TableCell>GSA</TableCell>
-                          <TableCell><span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">Submitted</span></TableCell>
-                         <TableCell className="text-right">2024-07-30</TableCell>
-                       </TableRow>
-                        <TableRow>
-                         <TableCell className="font-medium">Construction Project X</TableCell>
-                         <TableCell>SEPTA</TableCell>
-                          <TableCell><span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">Clarification</span></TableCell>
-                         <TableCell className="text-right">2024-09-01</TableCell>
-                       </TableRow>
-                       {/* Add more rows as needed */}
-                        {/* <TableRow>
-                          <TableCell colSpan={4} className="text-center text-muted-foreground italic">No ongoing bids</TableCell>
-                        </TableRow> */}
+                       {ongoingBids.length > 0 ? (
+                          ongoingBids.map((bid) => (
+                             <TableRow key={bid.id}>
+                               <TableCell className="font-medium">{bid.title}</TableCell>
+                               <TableCell>{bid.agency}</TableCell>
+                               <TableCell>
+                                 <Badge
+                                    variant={getStatusBadgeVariant(bid.status)}
+                                    className={cn("text-xs font-medium", getStatusBadgeClass(bid.status))}
+                                  >
+                                    {getStatusIcon(bid.status)}
+                                    {bid.status}
+                                  </Badge>
+                               </TableCell>
+                               <TableCell className="text-right">{bid.deadline}</TableCell>
+                             </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center text-muted-foreground italic">No ongoing bids</TableCell>
+                          </TableRow>
+                       )}
                      </TableBody>
                    </Table>
                    <Button variant="outline" size="sm" className="mt-4 w-full">View All Ongoing Bids</Button>
@@ -503,3 +586,4 @@ export default function Home() {
     </SidebarProvider>
   );
 }
+
