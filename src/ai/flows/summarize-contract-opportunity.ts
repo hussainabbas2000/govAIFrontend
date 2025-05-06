@@ -22,7 +22,7 @@ export type SummarizeContractOpportunityInput = z.infer<typeof SummarizeContract
 // Define output schema for extracted details
 const SummarizeContractOpportunityOutputSchema = z.object({
   requiredProductService: z.array(z.string()).describe('A list of all main products or services required by the opportunity.'),
-  quantity: z.string().describe('The estimated quantity or scale of the product/service needed (e.g., "500 users", "10 FTEs", "20,000 sq ft", "5 networks", "150 vehicles"). Extract any numerical value related to quantity or scale mentioned for the primary requirements.'),
+  quantity: z.string().describe('The estimated quantity or scale of the product/service needed (e.g., "500 users", "10 FTEs", "20,000 sq ft", "5 networks", "150 vehicles", "500 SATA 2 HDD, 200 2TB DDR4 RAM, 300 Intel i9-9700K Processors"). Extract any numerical value related to quantity or scale mentioned for the primary requirements. If specific multiple hardware items are listed with quantities, include them all.'),
   deadline: z.string().describe('The closing date or response deadline for the opportunity.'),
   location: z.string().describe('The primary location where the work will be performed or delivered.'),
 });
@@ -51,12 +51,12 @@ Description:
 {{{opportunity.description}}}
 
 Based *only* on the information provided above, extract the following:
-1.  **Required Product/Service:** Identify *all* distinct main items, tasks, or services being procured. List each primary product or service. Return these as an array of strings. Be concise for each item.
-2.  **Quantity:** Find any mention of quantity, number of units, size (e.g., sq ft), number of personnel (FTEs), user count, number of systems/networks, vehicle count, or other scale indicators within the title or description related to the core requirements. If multiple quantities are mentioned, focus on the most prominent one(s). If none is explicitly stated, respond with "Not specified".
+1.  **Required Product/Service:** Identify *all* distinct main items, tasks, or services being procured. List each primary product or service. Examples: "IT support", "Network Management", "Cybersecurity services", "Facility Wing Construction", "Janitorial Services", "Penetration Testing", "Office Supplies", "Grant Management Software", "Vehicle Maintenance", "Translation Services", "Environmental Assessment", "Cloud Hosting", "IT Hardware Procurement", "SATA HDD", "DDR4 RAM", "Intel Processors". Return these as an array of strings. Be concise for each item.
+2.  **Quantity:** Find any mention of quantity, number of units, size (e.g., sq ft), number of personnel (FTEs), user count, number of systems/networks, vehicle count, or other scale indicators within the title or description related to the core requirements. *Crucially, if specific hardware items like HDDs, RAM, or Processors are listed with quantities, extract those specific quantities and item names (e.g., "500 SATA 2 HDD, 200 2TB DDR4 RAM, 300 Intel i9-9700K Processors").* If only a general scale is mentioned (like users or sq ft), report that. If multiple quantities are mentioned, focus on the most prominent one(s) or the specific hardware quantities if available. If none is explicitly stated, respond with "Not specified".
 3.  **Deadline:** Extract the closing date.
 4.  **Location:** Extract the primary place of performance location (City, State, Zip if available). If multiple locations are mentioned, use the primary one listed or inferred.
 
-Return the extracted information in the specified JSON format, ensuring 'requiredProductService' is an array of strings.`,
+Return the extracted information in the specified JSON format, ensuring 'requiredProductService' is an array of strings. Ensure the 'quantity' field captures specific hardware quantities accurately if mentioned.`,
 });
 
 

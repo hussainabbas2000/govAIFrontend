@@ -194,6 +194,20 @@ const dummySamGovOpportunities: SamGovOpportunity[] = [
     officeAddress: "Washington, DC 20420, USA",
     description: "Provide secure, scalable cloud infrastructure hosting services compliant with FedRAMP High standards. Requires capacity for 10 Petabytes of storage and 5000 virtual machines."
   },
+   {
+     id: "DUMMY011",
+     title: "IT Hardware Procurement - Bulk Order",
+     ncode: "334111", // Electronic Computer Manufacturing
+     location: { city: { name: "Austin" }, state: { name: "TX" }, zip: "78701" },
+     closingDate: "2024-11-01T16:00:00Z",
+     department: "Department of Education",
+     subtier: "Office of the Chief Information Officer",
+     office: "Technology Infrastructure Services",
+     type: "Solicitation",
+     link: "https://sam.gov/opp/DUMMY011",
+     officeAddress: "Washington, DC 20202, USA",
+     description: "Bulk procurement of IT hardware components for data center upgrade. Required items include: 500 SATA 2 HDD units, 200 sticks of 2TB DDR4 RAM, and 300 Intel i9-9700K Processors. Delivery to Austin, TX data center."
+   },
 ];
 // --- Dummy Data End ---
 
@@ -496,21 +510,21 @@ function applyFilters(
 
 // --- Helper Functions (Used by API logic, commented out but kept for reference) ---
 
-function getCurrentDate(): string {
-    const today = new Date();
-    const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-    const dd = String(today.getDate()).padStart(2, '0');
-    const yyyy = today.getFullYear();
-    return `${mm}/${dd}/${yyyy}`;
-}
+// function getCurrentDate(): string {
+//     const today = new Date();
+//     const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+//     const dd = String(today.getDate()).padStart(2, '0');
+//     const yyyy = today.getFullYear();
+//     return `${mm}/${dd}/${yyyy}`;
+// }
 
-function getOneYearBackDate(): string {
-    const today = new Date();
-    const pastDate = new Date(today);
-    pastDate.setDate(today.getDate() - 364); // Go back 364 days (almost a year)
+// function getOneYearBackDate(): string {
+//     const today = new Date();
+//     const pastDate = new Date(today);
+//     pastDate.setDate(today.getDate() - 364); // Go back 364 days (almost a year)
 
-    const mm = String(pastDate.getMonth() + 1).padStart(2, '0');
-    const dd = String(pastDate.getDate()).padStart(2, '0');
-    const yyyy = pastDate.getFullYear();
-    return `${mm}/${dd}/${yyyy}`;
-}
+//     const mm = String(pastDate.getMonth() + 1).padStart(2, '0');
+//     const dd = String(pastDate.getDate()).padStart(2, '0');
+//     const yyyy = pastDate.getFullYear();
+//     return `${mm}/${dd}/${yyyy}`;
+// }
