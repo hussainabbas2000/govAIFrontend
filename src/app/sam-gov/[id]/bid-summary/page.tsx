@@ -12,7 +12,7 @@ import { Icons } from '@/components/icons';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, List } from 'lucide-react'; // Import Terminal and List icons
+import { Terminal, List, FileText, Edit } from 'lucide-react'; // Import Terminal and List icons
 import type { OngoingBid } from '@/app/page'; // Import OngoingBid type
 
 interface BidSummary extends SummarizeContractOpportunityOutput {
@@ -81,17 +81,7 @@ export default function BidSummaryPage() {
   const handleProceedToQuoteRequest = () => {
     if (!summary || !isClient) return;
 
-    const newBid: OngoingBid = {
-      id: summary.id,
-      title: summary.title,
-      agency: summary.agency,
-      status: "Drafting", // Initial status
-      deadline: summary.originalOpportunity.closingDate || 'N/A',
-      source: 'SAM.gov',
-      linkToOpportunity: `/sam-gov/${summary.id}`,
-    };
-
-    // Retrieve existing bids from localStorage, or initialize if none
+    // Update the bid status in localStorage
     const existingBidsString = localStorage.getItem('ongoingBids');
     let existingBids: OngoingBid[] = [];
     if (existingBidsString) {
@@ -99,24 +89,32 @@ export default function BidSummaryPage() {
         existingBids = JSON.parse(existingBidsString);
       } catch (e) {
         console.error("Failed to parse existing bids from localStorage", e);
-        // Potentially clear corrupted data
         localStorage.removeItem('ongoingBids');
       }
     }
 
-    // Check if bid already exists to avoid duplicates
-    if (!existingBids.find(b => b.id === newBid.id)) {
+    const bidIndex = existingBids.findIndex(b => b.id === summary.id);
+    if (bidIndex !== -1) {
+      existingBids[bidIndex].status = "RFQs Sent";
+      localStorage.setItem('ongoingBids', JSON.stringify(existingBids));
+      console.log(`Bid ${summary.id} status updated to RFQs Sent.`);
+    } else {
+      // This case should ideally not happen if the bid was added correctly before
+      console.warn(`Bid ${summary.id} not found in ongoing bids to update status, adding it now.`);
+       const newBid: OngoingBid = {
+        id: summary.id,
+        title: summary.title,
+        agency: summary.agency,
+        status: "RFQs Sent", 
+        deadline: summary.originalOpportunity.closingDate || 'N/A',
+        source: 'SAM.gov',
+        linkToOpportunity: `/sam-gov/${summary.id}`,
+      };
       const updatedBids = [...existingBids, newBid];
       localStorage.setItem('ongoingBids', JSON.stringify(updatedBids));
-      console.log("Bid added to ongoing bids:", newBid);
-      // Optionally, show a toast notification
-    } else {
-      console.log("Bid already in ongoing bids list.");
     }
-
-    // Navigate to the next step (e.g., RFQ page, not yet implemented)
-    // router.push(`/rfq/${summary.id}`);
-    alert("Bid added to Ongoing Bids on Dashboard (Status: Drafting). RFQ page not yet implemented.");
+    
+    router.push(`/rfq/${summary.id}`);
   };
 
 
@@ -157,45 +155,55 @@ export default function BidSummaryPage() {
 
         <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg animate-slideUp border-primary/10">
           <CardHeader className="bg-primary/5 p-6 border-b border-primary/10">
-            <CardTitle className="text-2xl font-semibold text-primary">Bid Summary</CardTitle>
+             <div className="flex items-center justify-between">
+              <CardTitle className="text-2xl font-semibold text-primary flex items-center">
+                <FileText className="h-6 w-6 mr-3 text-primary" /> Bid Summary
+              </CardTitle>
+              <Button variant="ghost" size="icon" onClick={() => alert("Edit summary feature not implemented.")}>
+                <Edit className="h-5 w-5 text-muted-foreground hover:text-primary" />
+                <span className="sr-only">Edit Summary</span>
+              </Button>
+            </div>
             <CardDescription className="text-sm text-muted-foreground pt-1">
               Key details extracted for: {summary.title} (ID: {summary.id})
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-5">
-            <div className="flex flex-col space-y-2 p-4 border rounded-md bg-background shadow-sm">
+            <div className="flex flex-col space-y-2 p-4 border rounded-md bg-background shadow-sm transition-shadow hover:shadow-md">
               <Label className="text-sm font-medium text-muted-foreground flex items-center">
-                <List className="h-4 w-4 mr-2" /> Required Products/Services
+                <List className="h-4 w-4 mr-2 text-primary" /> Required Products/Services
               </Label>
               {summary.requiredProductService?.length > 0 ? (
-                <ul className="list-disc list-inside space-y-1">
+                <ul className="list-disc list-inside space-y-1 pl-2">
                   {summary.requiredProductService.map((item, index) => (
-                    <li key={index} className="text-lg font-medium text-foreground">{item}</li>
+                    <li key={index} className="text-base font-medium text-foreground">{item}</li>
                   ))}
                 </ul>
               ) : (
-                 summary.requiredProductService ? <p className="text-lg font-medium text-foreground italic">None specified</p> : <Skeleton className="h-6 w-3/4" />
+                 summary.requiredProductService ? <p className="text-base font-medium text-foreground italic">None specified</p> : <Skeleton className="h-6 w-3/4" />
               )}
             </div>
 
-            <div className="flex flex-col space-y-1 p-4 border rounded-md bg-background shadow-sm">
-              <Label className="text-sm font-medium text-muted-foreground">Estimated Quantity / Scale</Label>
-              <p className="text-lg font-medium text-foreground">{summary.quantity || <Skeleton className="h-6 w-1/2" />}</p>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex flex-col space-y-1 p-4 border rounded-md bg-background shadow-sm transition-shadow hover:shadow-md">
+                <Label className="text-sm font-medium text-muted-foreground">Estimated Quantity / Scale</Label>
+                <p className="text-base font-medium text-foreground">{summary.quantity || <Skeleton className="h-6 w-1/2" />}</p>
+              </div>
 
-            <div className="flex flex-col space-y-1 p-4 border rounded-md bg-background shadow-sm">
-              <Label className="text-sm font-medium text-muted-foreground">Deadline</Label>
-              <p className="text-lg font-medium text-foreground">{summary.deadline || <Skeleton className="h-6 w-1/4" />}</p>
-            </div>
+              <div className="flex flex-col space-y-1 p-4 border rounded-md bg-background shadow-sm transition-shadow hover:shadow-md">
+                <Label className="text-sm font-medium text-muted-foreground">Deadline</Label>
+                <p className="text-base font-medium text-foreground">{summary.deadline || <Skeleton className="h-6 w-1/4" />}</p>
+              </div>
 
-            <div className="flex flex-col space-y-1 p-4 border rounded-md bg-background shadow-sm">
-              <Label className="text-sm font-medium text-muted-foreground">Location</Label>
-              <p className="text-lg font-medium text-foreground">{summary.location || <Skeleton className="h-6 w-1/2" />}</p>
+              <div className="flex flex-col space-y-1 p-4 border rounded-md bg-background shadow-sm transition-shadow hover:shadow-md">
+                <Label className="text-sm font-medium text-muted-foreground">Location</Label>
+                <p className="text-base font-medium text-foreground">{summary.location || <Skeleton className="h-6 w-1/2" />}</p>
+              </div>
             </div>
+            
 
-            {/* Placeholder for next steps/buttons */}
             <div className="mt-8 pt-6 border-t flex justify-end space-x-3">
-              <Button variant="outline">Save Summary</Button>
+              <Button variant="outline" onClick={() => alert("Save summary feature not implemented")}>Save Summary</Button>
               <Button onClick={handleProceedToQuoteRequest} disabled={!isClient}>Proceed to Quote Request</Button>
             </div>
           </CardContent>
@@ -223,6 +231,3 @@ export default function BidSummaryPage() {
     </main>
   );
 }
-
-
-    
