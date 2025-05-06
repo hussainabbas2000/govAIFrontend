@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -8,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import Loading from '@/app/loading';
 import { Icons } from '@/components/icons';
 import { format } from 'date-fns';
+import { Label } from '@/components/ui/label'; // Import Label component
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function SamGovOpportunityPage() {
   const params = useParams();
@@ -35,7 +38,8 @@ export default function SamGovOpportunityPage() {
         if (foundOpportunity) {
           setOpportunity(foundOpportunity);
 
-          // Check if description is a URL and fetch it
+          // Check if description is a URL and fetch it (commented out - using dummy data)
+          /*
           if (foundOpportunity.description && foundOpportunity.description.startsWith('http')) {
             const apiKey = process.env.NEXT_PUBLIC_SAM_GOV_API_KEY;
             if (!apiKey) {
@@ -63,6 +67,10 @@ export default function SamGovOpportunityPage() {
             // Use the potentially truncated description if it's not a URL
             setDescription(foundOpportunity.description || 'No description available.');
           }
+          */
+         // Use dummy description directly for now
+         setDescription(foundOpportunity.description || 'No description available.');
+
         } else {
           setError('Opportunity not found.');
           setOpportunity(null);
