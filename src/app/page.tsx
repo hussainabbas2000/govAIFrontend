@@ -23,6 +23,7 @@ import { BidsByCategoryChart } from '@/components/dashboard/bids-by-category-cha
 import { BidsByPortalChart } from '@/components/dashboard/bids-by-portal-chart'; // Import the new chart component
 import { useToast } from '@/hooks/use-toast'; // Import useToast
 import { Badge } from "@/components/ui/badge"; // Import Badge component
+import { cn } from '@/lib/utils'; // Import cn utility function
 
 // Define bid states type
 type BidStatus = "Drafting" | "RFQs Sent" | "Quotes Received" | "Final Quotes Selected" | "Bid Submitted" | "Bid Approved" | "Bid Completed" | "Clarification";
