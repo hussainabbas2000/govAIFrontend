@@ -11,7 +11,7 @@ import { Icons } from '@/components/icons';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal } from 'lucide-react'; // Import Terminal icon for Alert
+import { Terminal, List } from 'lucide-react'; // Import Terminal and List icons
 
 interface BidSummary extends SummarizeContractOpportunityOutput {
   title: string;
@@ -35,7 +35,8 @@ export default function BidSummaryPage() {
 
       try {
         // 1. Fetch the specific opportunity details
-        const allOpportunities = await getSamGovOpportunities({}); // Using cached/dummy data source
+        // Using the cached/dummy data approach from getSamGovOpportunities
+        const allOpportunities = await getSamGovOpportunities({});
         const opportunity = allOpportunities.find(opp => opp.id === id);
 
         if (!opportunity) {
@@ -108,9 +109,19 @@ export default function BidSummaryPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-5">
-            <div className="flex flex-col space-y-1 p-4 border rounded-md bg-background shadow-sm">
-              <Label className="text-sm font-medium text-muted-foreground">Required Product/Service</Label>
-              <p className="text-lg font-medium text-foreground">{summary.requiredProductService || <Skeleton className="h-6 w-3/4" />}</p>
+            <div className="flex flex-col space-y-2 p-4 border rounded-md bg-background shadow-sm">
+              <Label className="text-sm font-medium text-muted-foreground flex items-center">
+                <List className="h-4 w-4 mr-2" /> Required Products/Services
+              </Label>
+              {summary.requiredProductService?.length > 0 ? (
+                <ul className="list-disc list-inside space-y-1">
+                  {summary.requiredProductService.map((item, index) => (
+                    <li key={index} className="text-lg font-medium text-foreground">{item}</li>
+                  ))}
+                </ul>
+              ) : (
+                 summary.requiredProductService ? <p className="text-lg font-medium text-foreground italic">None specified</p> : <Skeleton className="h-6 w-3/4" />
+              )}
             </div>
 
             <div className="flex flex-col space-y-1 p-4 border rounded-md bg-background shadow-sm">
