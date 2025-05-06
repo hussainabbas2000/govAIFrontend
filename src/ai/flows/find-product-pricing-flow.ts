@@ -21,7 +21,8 @@ const PricedItemSchema = z.object({
   name: z.string().describe('The product name from the input list.'),
   identifiedQuantity: z.string().describe('The specific quantity identified for this product from quantityDetails (e.g., "500 units", "200 sticks", or "Not numerically specified").'),
   rate: z.number().describe('Best per-item price (numeric). Set to 0 if not applicable or found.'),
-  websiteLink: z.string().url().optional().describe('A plausible URL where this item can be purchased at this rate.'),
+  // Removed .url() as it's not supported by the model's schema validation for strings other than enum/date-time
+  websiteLink: z.string().optional().describe('A plausible URL where this item can be purchased at this rate.'),
   vendorContactInfo: z.string().optional().describe('Plausible contact information for the vendor (e.g., email or phone).'),
   subtotal: z.number().describe('Calculated subtotal (rate * numeric part of identifiedQuantity). Set to 0 if quantity is not numeric or rate is 0.'),
 });
