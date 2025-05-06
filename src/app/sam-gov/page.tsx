@@ -1,4 +1,3 @@
-
 'use client';
 
 import {useEffect, useState, useMemo} from 'react';
@@ -29,6 +28,7 @@ import {Checkbox} from '@/components/ui/checkbox';
 import Loading from '@/app/loading';
 import { Skeleton } from "@/components/ui/skeleton";
 import { TotalListingsLabel } from '@/components/total-listings-label';
+import Link from 'next/link';
 
 
 const itemsPerPage = 10;
@@ -262,7 +262,6 @@ export default function SamGovOpportunitiesPage() {
           )}
         </div>
 
-         {/* Show Only Open Listings Filter
          <div className="flex items-center space-x-2 pt-2">
             <Checkbox
               id="open-listings"
@@ -273,7 +272,7 @@ export default function SamGovOpportunitiesPage() {
             <Label htmlFor="open-listings" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
               Show Only Open Listings
             </Label>
-          </div> */}
+          </div>
       </aside>
 
       {/* Main Content Area for Listings */}
@@ -334,9 +333,9 @@ export default function SamGovOpportunitiesPage() {
                 </CardContent>
                 <div className="p-6 pt-0 mt-auto">
                    <Button asChild size="sm" className="w-full">
-                     <a href={opportunity.link} target="_blank" rel="noopener noreferrer">
+                     <Link href={`/sam-gov/${opportunity.id}`}>
                        View Details
-                     </a>
+                     </Link>
                    </Button>
                 </div>
               </Card>
