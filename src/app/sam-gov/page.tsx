@@ -262,7 +262,7 @@ export default function SamGovOpportunitiesPage() {
           )}
         </div>
 
-         {/* Show Only Open Listings Filter */}
+         {/* Show Only Open Listings Filter
          <div className="flex items-center space-x-2 pt-2">
             <Checkbox
               id="open-listings"
@@ -273,7 +273,7 @@ export default function SamGovOpportunitiesPage() {
             <Label htmlFor="open-listings" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
               Show Only Open Listings
             </Label>
-          </div>
+          </div> */}
       </aside>
 
       {/* Main Content Area for Listings */}

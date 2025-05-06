@@ -71,7 +71,7 @@ export default function RecommendationsPage() {
            { id: 'rec2', title: 'Cybersecurity Training Services', agency: 'DHS', relevanceScore: 0, link: '#', closingDate: '2024-08-30', description: 'Provide cybersecurity training for government employees.' },
            { id: 'rec3', title: 'Cloud Migration Support (GovCloud)', agency: 'GSA', relevanceScore: 0, link: '#', closingDate: '2024-10-01', description: 'Assist agencies in migrating services to GovCloud.' },
            { id: 'rec4', title: 'Sustainable Office Supplies', agency: 'EPA', relevanceScore: 0, link: '#', closingDate: '2024-09-05', description: 'Supply eco-friendly office products.' },
-           { id: 'rec5', title: 'Logistics & Transportation Optimization', agency: 'DoT', relevanceScore: 0, link: '#', closingDate: '2024-09-20', description: 'Optimize transportation routes and logistics for efficiency.' },
+           { id: 'rec5', title: 'Logistics & Transportation Optimization', agency: 'DOT', relevanceScore: 0, link: '#', closingDate: '2024-09-20', description: 'Optimize transportation routes and logistics for efficiency.' },
            // Add more dummy data...
            { id: 'rec6', title: 'Janitorial Services - Federal Building', agency: 'GSA', relevanceScore: 0, link: '#', closingDate: '2024-10-10', description: 'Provide janitorial services for a federal building in Philadelphia, PA.' },
            { id: 'rec7', title: 'IT Hardware Refresh', agency: 'Department of Defense', relevanceScore: 0, link: '#', closingDate: '2024-11-01', description: 'Supply new laptops and desktops according to specified requirements.' },
