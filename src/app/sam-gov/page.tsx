@@ -34,8 +34,10 @@ import Link from 'next/link';
 const itemsPerPage = 10;
 
 export default function SamGovOpportunitiesPage() {
-  const [samGovOpportunities, setSamGovOpportunities] = useState<SamGovOpportunity[]>([]);
-  const [descriptions, setDescriptions] = useState<Record<string, string>>({}); // State remains for descriptions
+  // State for the full list of opportunities (initially empty)
+  const [allOpportunities, setAllOpportunities] = useState<SamGovOpportunity[]>([]);
+  // State for descriptions (might be populated later or kept separate)
+  const [descriptions, setDescriptions] = useState<Record<string, string>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [ncodeFilter, setNcodeFilter] = useState('');
@@ -53,75 +55,47 @@ export default function SamGovOpportunitiesPage() {
       setDescriptions({}); // Reset descriptions
 
       try {
-        // Fetch opportunities list - includes descriptions
-        const opportunities = await getSamGovOpportunities({});
-        setSamGovOpportunities(opportunities);
+        // Fetch opportunities list (using dummy data function for now)
+        // Pass current filters to the dummy data function so it can filter
+        const opportunities = await getSamGovOpportunities({
+            searchQuery,
+            ncode: ncodeFilter,
+            location: locationFilter,
+            dateFilter: dateFilter?.toISOString(), // Pass date as string if needed
+            showOnlyOpen: showOnlyOpen ? 'true' : '', // Pass boolean as string
+         });
 
-        // Populate descriptions state from fetched data
+        setAllOpportunities(opportunities);
+
+        // Populate descriptions state from fetched data if descriptions are included
         const newDescriptions: Record<string, string> = {};
         opportunities.forEach(opp => {
+          // If descriptions are fetched within getSamGovOpportunities (even dummy ones)
           newDescriptions[opp.id] = opp.description || "No description available.";
         });
-        setDescriptions(newDescriptions);
+        setDescriptions(newDescriptions); // You might adjust this if descriptions are fetched separately
 
       } catch (error: any) {
         console.error("Error fetching SAM.gov data:", error);
         setError(error.message || "Failed to load opportunities.");
-        setSamGovOpportunities([]);
+        setAllOpportunities([]);
       } finally {
         setLoading(false);
       }
     };
 
+    // Fetch data when component mounts or filters change
     fetchAllData();
-  }, []); // Fetch only once on component mount
+  }, [searchQuery, ncodeFilter, locationFilter, dateFilter, showOnlyOpen]); // Re-fetch when filters change
 
-  // Filter opportunities based on current state - Use useMemo for performance
-  const filteredOpportunities = useMemo(() => {
-    return samGovOpportunities.filter(opportunity => {
-      // Search query filter
-      const searchLower = searchQuery.toLowerCase();
-      const matchesSearch =
-        opportunity.title?.toLowerCase().includes(searchLower) ||
-        opportunity.department?.toLowerCase().includes(searchLower) ||
-        opportunity.subtier?.toLowerCase().includes(searchLower) ||
-        opportunity.office?.toLowerCase().includes(searchLower) ||
-        (descriptions[opportunity.id] || '').toLowerCase().includes(searchLower); // Search description too
-
-      // NAICS code filter
-      const ncodeLower = ncodeFilter.toLowerCase();
-      const matchesNaics = !ncodeLower || opportunity.ncode?.toLowerCase().includes(ncodeLower);
-
-      // Location filter
-      const locationLower = locationFilter.toLowerCase();
-      const matchesLocation = !locationLower ||
-        [
-          opportunity.location?.city?.name,
-          opportunity.location?.state?.name,
-          opportunity.location?.country?.name,
-          opportunity.location?.zip,
-          opportunity.officeAddress, // Include office address in location search
-        ]
-          .filter(Boolean)
-          .some(field => field?.toLowerCase().includes(locationLower));
-
-      // Date filter (Closing date >= selected date)
-      const matchesDate = !dateFilter ||
-        (opportunity.closingDate && new Date(opportunity.closingDate) >= dateFilter);
-
-      // Open listings filter (Closing date >= today)
-      const isOpen = opportunity.closingDate && new Date(opportunity.closingDate).setHours(0,0,0,0) >= new Date().setHours(0,0,0,0);
-      const matchesOpen = !showOnlyOpen || isOpen;
-
-      return matchesSearch && matchesNaics && matchesLocation && matchesDate && matchesOpen;
-    });
-  }, [samGovOpportunities, descriptions, searchQuery, ncodeFilter, locationFilter, dateFilter, showOnlyOpen]);
-
+  // NOTE: Filtering is now handled within getSamGovOpportunities for dummy data
+  // If using real API with cache, filtering would happen here on the cached `allOpportunities`
+  const filteredOpportunities = allOpportunities; // The data is already filtered
 
   const currentTotalItems = filteredOpportunities.length;
   const totalPages = Math.ceil(currentTotalItems / itemsPerPage);
 
-  // Paginate the *filtered* opportunities
+  // Paginate the *already filtered* opportunities
   const currentOpportunities = useMemo(() => {
      return filteredOpportunities.slice(
        (currentPage - 1) * itemsPerPage,
@@ -171,6 +145,8 @@ export default function SamGovOpportunitiesPage() {
    // Function to truncate description
    const truncateDescription = (text: string | undefined, wordLimit: number): string => {
     if (!text) return 'N/A';
+    // Handle cases where description might still be a URL if dummy data isn't fully populated
+    if (text.startsWith('http')) return 'Description available via link.';
     const words = text.split(' ');
     if (words.length <= wordLimit) {
       return text;
@@ -179,7 +155,7 @@ export default function SamGovOpportunitiesPage() {
   };
 
 
-  if (loading && samGovOpportunities.length === 0) { // Show loading component only on initial load
+  if (loading && allOpportunities.length === 0) { // Show loading component only on initial load
     return <Loading />;
   }
 
@@ -279,14 +255,14 @@ export default function SamGovOpportunitiesPage() {
       <div className="flex-1 p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-3xl font-bold">SAM.gov Opportunities</h2>
-           <TotalListingsLabel total={currentTotalItems} loading={loading} />
+           <TotalListingsLabel total={currentTotalItems} loading={loading && currentOpportunities.length === 0} />
         </div>
 
         {error && <div className="mb-4 text-red-600">Error: {error}</div>}
 
-        {loading ? (
+        {loading && currentOpportunities.length === 0 ? ( // Show skeletons only if loading AND no items shown yet
            <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-             {/* Show Skeletons while loading descriptions or filtering */}
+             {/* Show Skeletons */}
              {Array.from({ length: itemsPerPage }).map((_, index) => (
                <Card key={`skeleton-${index}`} className="shadow-md rounded-lg">
                  <CardHeader>
@@ -328,7 +304,7 @@ export default function SamGovOpportunitiesPage() {
                    </CardDescription>
                     {/* Display Truncated Description */}
                     <CardDescription className="pt-2 text-foreground">
-                        Description: {truncateDescription(descriptions[opportunity.id], 50)}
+                        Description: {truncateDescription(descriptions[opportunity.id] || opportunity.description, 50)}
                     </CardDescription>
                 </CardContent>
                 <div className="p-6 pt-0 mt-auto">
