@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -46,7 +47,7 @@ export default function RfqPage() {
 
       try {
         // 1. Fetch opportunity details
-        const allOpportunities = await getSamGovOpportunities({});
+        const allOpportunities = await getSamGovOpportunities({}); // Assuming this uses cache/dummy as per previous setup
         const currentOpportunity = allOpportunities.find(opp => opp.id === id);
         if (!currentOpportunity) {
           throw new Error('Opportunity not found.');
@@ -61,21 +62,25 @@ export default function RfqPage() {
           id: currentOpportunity.id,
         });
 
-        // 3. Fetch product pricing using AI
-        if (summaryOutput.requiredProductService && summaryOutput.quantity) {
+        // 3. Fetch product pricing using AI and the new tool-based flow
+        if (summaryOutput.requiredProductService && summaryOutput.requiredProductService.length > 0 && summaryOutput.quantity) {
           const pricingInput: FindProductPricingInput = {
             productList: summaryOutput.requiredProductService,
             quantityDetails: summaryOutput.quantity,
           };
+          console.log("Requesting pricing with input:", JSON.stringify(pricingInput, null, 2));
           const pricingOutput = await findProductPricing(pricingInput);
+          console.log("Received pricing info:", JSON.stringify(pricingOutput, null, 2));
           setPricingInfo(pricingOutput);
         } else {
-          setPricingInfo({ pricedItems: [], totalAmount: 0 }); // Handle cases with no products/quantity
+          console.log("No required products/services or quantity found in summary. Setting empty pricing info.");
+          setPricingInfo({ pricedItems: [], totalAmount: 0 });
         }
 
       } catch (err: any) {
         console.error('Error fetching opportunity or pricing:', err);
         setError(err.message || 'Failed to load RFQ details.');
+        setPricingInfo({ pricedItems: [], totalAmount: 0 }); // Ensure pricingInfo is in a valid state on error
       } finally {
         setLoading(false);
       }
@@ -126,13 +131,9 @@ export default function RfqPage() {
     );
   }
 
-  if (!opportunity || !bidSummary || !pricingInfo) {
-    return (
-      <main className="flex flex-1 items-center justify-center p-6">
-        <p>RFQ details could not be fully loaded.</p>
-      </main>
-    );
-  }
+  // Ensure components don't crash if data is partially missing
+  const safeBidSummaryTitle = bidSummary?.title || opportunity?.title || "N/A";
+  const safeBidSummaryId = bidSummary?.id || opportunity?.id || "N/A";
 
   return (
     <main className="flex-1 p-6 bg-gradient-to-br from-background to-secondary/10 animate-fadeIn">
@@ -148,11 +149,11 @@ export default function RfqPage() {
               <ShoppingCart className="h-6 w-6 mr-3 text-primary" /> Request for Quotation (RFQ)
             </CardTitle>
             <CardDescription className="text-sm text-muted-foreground pt-1">
-              Pricing for: {bidSummary.title} (ID: {bidSummary.id})
+              Pricing for: {safeBidSummaryTitle} (ID: {safeBidSummaryId})
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
-            {pricingInfo.pricedItems.length > 0 ? (
+            {pricingInfo && pricingInfo.pricedItems.length > 0 ? (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -168,23 +169,23 @@ export default function RfqPage() {
                   <TableBody>
                     {pricingInfo.pricedItems.map((item, index) => (
                       <TableRow key={index} className="hover:bg-muted/50 transition-colors">
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell>{item.identifiedQuantity}</TableCell>
+                        <TableCell className="font-medium">{item.name || 'N/A'}</TableCell>
+                        <TableCell>{item.identifiedQuantity || 'N/A'}</TableCell>
                         <TableCell className="text-right">
-                          {item.rate > 0 ? `$${item.rate.toFixed(2)}` : 'N/A'}
+                          {typeof item.rate === 'number' && item.rate > 0 ? `$${item.rate.toFixed(2)}` : 'N/A'}
                         </TableCell>
                         <TableCell className="text-right font-semibold">
-                          {item.subtotal > 0 ? `$${item.subtotal.toFixed(2)}` : 'N/A'}
+                          {typeof item.subtotal === 'number' && item.subtotal > 0 ? `$${item.subtotal.toFixed(2)}` : 'N/A'}
                         </TableCell>
                         <TableCell>
-                          {item.websiteLink ? (
+                          {item.websiteLink && item.websiteLink !== "N/A" ? (
                             <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:underline">
-                              <a href={item.websiteLink} target="_blank" rel="noopener noreferrer" className="flex items-center">
+                              <a href={item.websiteLink.startsWith('http') ? item.websiteLink : `http://${item.websiteLink}`} target="_blank" rel="noopener noreferrer" className="flex items-center">
                                 View <ExternalLink className="h-3 w-3 ml-1" />
                               </a>
                             </Button>
                           ) : (
-                            'N/A'
+                            item.websiteLink || 'N/A' // Show "N/A" if it's set, otherwise the value (which might be an error message from tool)
                           )}
                         </TableCell>
                         <TableCell>
@@ -198,9 +199,10 @@ export default function RfqPage() {
             ) : (
               <Alert>
                 <ListTree className="h-4 w-4" />
-                <AlertTitle>No Pricing Information</AlertTitle>
+                <AlertTitle>No Pricing Information Available</AlertTitle>
                 <AlertDescription>
-                  Could not retrieve specific pricing details for the items. This might be due to the nature of the products/services or lack of available online data.
+                  Could not retrieve specific pricing details for the items at this time. This might be due to the nature of the products/services, lack of available online data, or an issue with the search tool.
+                  { pricingInfo?.pricedItems?.some(item => item.identifiedQuantity === "Error in processing") && " There was an error processing some items."}
                 </AlertDescription>
               </Alert>
             )}
@@ -208,7 +210,7 @@ export default function RfqPage() {
             <div className="mt-6 pt-6 border-t flex flex-col sm:flex-row justify-between items-center">
               <div className="text-lg font-bold text-primary flex items-center mb-4 sm:mb-0">
                 <DollarSign className="h-6 w-6 mr-2" />
-                Total Estimated Amount: ${pricingInfo.totalAmount.toFixed(2)}
+                Total Estimated Amount: ${pricingInfo?.totalAmount?.toFixed(2) || '0.00'}
               </div>
               <div className="flex space-x-3">
                 <Button variant="outline" onClick={() => alert("Save RFQ functionality not implemented.")}>Save RFQ</Button>
@@ -220,7 +222,8 @@ export default function RfqPage() {
               <Info className="h-4 w-4 text-accent" />
               <AlertTitle className="text-accent">Disclaimer</AlertTitle>
               <AlertDescription>
-                The pricing information provided is AI-generated based on publicly available data and is for estimation purposes only. Actual prices may vary. Always verify with vendors.
+                The pricing information provided is AI-assisted and based on automated web searches. It is for estimation purposes only. Actual prices may vary. Always verify with vendors.
+                If "N/A" or error messages appear, it indicates that information could not be reliably retrieved.
               </AlertDescription>
             </Alert>
 

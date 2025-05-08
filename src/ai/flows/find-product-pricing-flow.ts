@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI agent that finds pricing information for a list of products
@@ -58,23 +59,23 @@ For each product in the 'productList':
     - Example: If 'productList' contains "SATA 2 HDD" and 'quantityDetails' says "500 SATA 2 HDD units...", then 'identifiedQuantity' is "500 units" and numerical quantity is 500.
     - If a product is not explicitly quantified, 'identifiedQuantity' should be "Not numerically specified" and numerical quantity is 0.
 
-2.  Use the 'productSearchTool' with the product name and its numerical quantity (if > 0, otherwise pass 1 or omit).
-    The tool will return a list of potential online purchasing options.
+2.  Use the 'productSearchTool' with the product name and its numerical quantity (if > 0, otherwise pass 1).
+    The tool will return up to 3-5 potential online purchasing options, sorted by price.
 
-3.  From the tool's search results:
-    a.  Select the **best option**. The "best" option should ideally have the lowest 'extractedPrice' (this will be your 'rate').
-    b.  Ensure the 'link' from the tool's result is a direct product page if possible; this will be your 'websiteLink'.
-    c.  Extract or infer 'vendorContactInfo' from the tool's result (e.g., 'sourceName' could be a starting point, or look for contact details in snippets). If a direct contact isn't obvious, the main website of the source is acceptable.
-    d.  Critically consider if the source is likely to fulfill the 'identifiedQuantity'. Look for clues in the tool's 'title', 'snippet', or 'quantityContext'. Prioritize sources that seem equipped for the specified quantity.
+3.  From the tool's search results (the array of options):
+    a.  Analyze each option provided by the tool.
+    b.  Select the **single best option** that has the lowest 'extractedPrice' (this will be your 'rate') and seems most likely to fulfill the 'identifiedQuantity'. Look for clues in the tool's 'title', 'snippet', or 'quantityContext'. Prioritize sources that explicitly mention bulk, wholesale, or seem like B2B suppliers if the quantity is large.
+    c.  The 'link' from the tool's selected result should be your 'websiteLink'. Ensure it's a direct product page if possible.
+    d.  Extract or infer 'vendorContactInfo' from the tool's selected result (e.g., 'sourceName' could be a starting point, or look for contact details in snippets). If a direct contact isn't obvious, the main website of the source is acceptable.
 
 4.  Calculate the 'subtotal' (rate * numerical quantity). If numerical quantity is 0 or rate is 0, subtotal is 0.
 
-5.  If the 'productSearchTool' returns no suitable results or if an error occurs (e.g., 'SERP_API_KEY not configured' or 'No relevant product listings found'), set 'rate' to 0, 'subtotal' to 0, 'websiteLink' to "N/A", and 'vendorContactInfo' to "N/A" for that product.
+5.  If the 'productSearchTool' returns no suitable results (e.g., empty array, or items with "No relevant product listings found" or "SERP_API_KEY not configured" in snippet), or if you cannot confidently select an option, set 'rate' to 0, 'subtotal' to 0, 'websiteLink' to "N/A", and 'vendorContactInfo' to "N/A" for that product. Log why a suitable option could not be found if possible.
 
 Finally, calculate the 'totalAmount' by summing all 'subtotals'.
 
 Return the complete information in the specified JSON format for ProductPricingOutputSchema.
-Be thorough and ensure all fields in PricedItemSchema are populated accurately based on your analysis of the tool's output.
+Be thorough and ensure all fields in PricedItemSchema are populated accurately based on your analysis of the tool's output for the *selected best option*.
 `,
 });
 
@@ -85,43 +86,71 @@ const findProductPricingFlow = ai.defineFlow(
     outputSchema: ProductPricingOutputSchema,
   },
   async (input) => {
+    console.log("findProductPricingFlow: Input received:", JSON.stringify(input, null, 2));
     const {output} = await prompt(input); // The LLM will use the tool internally
-    if (!output) {
-        throw new Error("AI failed to generate pricing output. The prompt might have failed or returned an empty response.");
+    
+    if (!output || !output.pricedItems) {
+        console.error("AI failed to generate pricing output or pricedItems is missing. Input was:", JSON.stringify(input, null, 2));
+        // Construct a default error response matching the schema
+        const errorPricedItems = input.productList.map(productName => ({
+            name: productName,
+            identifiedQuantity: "Error in processing",
+            rate: 0,
+            websiteLink: "N/A",
+            vendorContactInfo: "N/A",
+            subtotal: 0,
+        }));
+        return {
+            pricedItems: errorPricedItems,
+            totalAmount: 0,
+        };
     }
+    
+    console.log("findProductPricingFlow: Raw AI output:", JSON.stringify(output, null, 2));
+
     // Ensure subtotals and totalAmount are correctly calculated as a final check,
     // although the LLM should handle this based on the prompt.
     let calculatedTotalAmount = 0;
     const processedItems = output.pricedItems.map(item => {
         let numericQuantity = 0;
-        const quantityMatch = item.identifiedQuantity.match(/(\d+)/);
+        // Robustly extract numeric quantity
+        const quantityMatch = String(item.identifiedQuantity || "").match(/(\d+(\.\d+)?)/);
         if (quantityMatch && quantityMatch[1]) {
-            numericQuantity = parseInt(quantityMatch[1], 10);
+            numericQuantity = parseFloat(quantityMatch[1]);
         }
 
         let subtotal = 0;
-        if (numericQuantity > 0 && item.rate > 0) {
-            subtotal = numericQuantity * item.rate;
-        } else {
-          // If LLM didn't set rate to 0 for non-numeric qty, force it.
-          item.rate = 0;
+        // Ensure rate is a number, default to 0 if not
+        const rate = typeof item.rate === 'number' ? item.rate : 0;
+
+        if (numericQuantity > 0 && rate > 0) {
+            subtotal = numericQuantity * rate;
         }
-        // Ensure subtotal is consistent
-        if (item.subtotal !== subtotal) {
-            console.warn(`Subtotal mismatch for ${item.name}. LLM: ${item.subtotal}, Calculated: ${subtotal}. Using calculated.`);
+        
+        // If LLM didn't set rate to 0 for non-numeric qty or zero rate, ensure consistency
+        const finalRate = (numericQuantity > 0 && rate > 0) ? rate : 0;
+        const finalSubtotal = (numericQuantity > 0 && finalRate > 0) ? numericQuantity * finalRate : 0;
+
+        if (item.subtotal !== finalSubtotal) {
+            console.warn(`Subtotal mismatch for ${item.name}. LLM: ${item.subtotal}, Calculated: ${finalSubtotal}. Using calculated.`);
         }
-        calculatedTotalAmount += subtotal;
-        return { ...item, subtotal }; // Return the item with potentially corrected subtotal
+        calculatedTotalAmount += finalSubtotal;
+        return { 
+            ...item, 
+            rate: finalRate, // Use the potentially corrected rate
+            subtotal: finalSubtotal // Use the potentially corrected subtotal
+        };
     });
     
-    // Ensure total amount is consistent
     if (output.totalAmount !== calculatedTotalAmount) {
         console.warn(`Total amount mismatch. LLM: ${output.totalAmount}, Calculated: ${calculatedTotalAmount}. Using calculated.`);
     }
-
-    return {
+    
+    const finalOutput = {
         pricedItems: processedItems,
         totalAmount: calculatedTotalAmount,
     };
+    console.log("findProductPricingFlow: Processed output:", JSON.stringify(finalOutput, null, 2));
+    return finalOutput;
   }
 );
