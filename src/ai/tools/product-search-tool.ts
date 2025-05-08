@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview A Genkit tool to search for product pricing and vendor information using SerpAPI.
  *
