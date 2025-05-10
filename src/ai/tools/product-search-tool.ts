@@ -20,9 +20,10 @@ export type ProductSearchInput = z.infer<typeof ProductSearchInputSchema>;
 
 // Schema for a single search result item
 export const ProductSearchOutputItemSchema = z.object({
-  sourceName: z.string().optional().describe('Name of the website or vendor.'),
+  vendorName: z.string().optional().describe('Name of the website or vendor (previously sourceName).'), // Renamed from sourceName
   title: z.string().optional().describe('Product title or listing title.'),
   link: z.string().optional().describe('Direct link to the product page.'),
+  contactOrQuoteUrl: z.string().optional().describe('URL for contacting the vendor or requesting a quote, if found.'), // New field
   extractedPrice: z.number().optional().describe('Price extracted from the listing.'),
   priceCurrency: z.string().optional().default('USD').describe('Currency of the price.'),
   snippet: z.string().optional().describe('A brief description or snippet from the search result.'),
@@ -41,13 +42,12 @@ async function searchProductOnline(input: ProductSearchInput): Promise<ProductSe
 
   if (!serpApiKey) {
     console.warn('SERP_API_KEY is not set. Product search will not be performed.');
-    // Return an array with a specific message if the API key is missing
-    return [{ title: productName, snippet: 'SERP_API_KEY not configured. Real-time search unavailable.' }];
+    return [{ vendorName: productName, title: productName, snippet: 'SERP_API_KEY not configured. Real-time search unavailable.' }];
   }
 
   let searchQuery = `buy ${productName}`;
   if (requiredQuantity && requiredQuantity > 1) {
-    searchQuery += ` quantity ${requiredQuantity} wholesale`; // Prioritize wholesale/bulk for quantity
+    searchQuery += ` quantity ${requiredQuantity} wholesale`;
   } else {
     searchQuery += ` best price`;
   }
@@ -55,8 +55,8 @@ async function searchProductOnline(input: ProductSearchInput): Promise<ProductSe
   const params = new URLSearchParams({
     q: searchQuery,
     api_key: serpApiKey,
-    engine: 'google_shopping', // Use Google Shopping for more e-commerce focused results
-    num: '10', // Get more results initially to filter down
+    engine: 'google_shopping',
+    num: '10',
   });
 
   const url = `https://serpapi.com/search.json?${params.toString()}`;
@@ -67,21 +67,20 @@ async function searchProductOnline(input: ProductSearchInput): Promise<ProductSe
     if (!response.ok) {
       const errorData = await response.text();
       console.error(`SerpAPI request failed: ${response.status}`, errorData);
-      // Return an error indication in the results
-      return [{ title: productName, snippet: `SerpAPI request failed: ${response.status}. ${errorData}` }];
+      return [{ vendorName: productName, title: productName, snippet: `SerpAPI request failed: ${response.status}. ${errorData}` }];
     }
     const searchData = await response.json();
 
     const results: ProductSearchOutputItem[] = [];
 
-    // Process shopping results first (higher quality for pricing)
     if (searchData.shopping_results && searchData.shopping_results.length > 0) {
       searchData.shopping_results.forEach((item: any) => {
-        if (results.length < 5) { // Limit to 5 results
+        if (results.length < 5) {
           results.push({
-            sourceName: item.source,
+            vendorName: item.source, // Use source as vendorName
             title: item.title,
             link: item.link,
+            // contactOrQuoteUrl: undefined, // LLM will infer this
             extractedPrice: item.extracted_price || (typeof item.price === 'string' ? parseFloat(item.price.replace(/[^0-9.]/g, '')) : item.price),
             priceCurrency: item.currency || 'USD',
             snippet: item.snippet || item.rich_snippet?.top?.extensions?.join(' '),
@@ -91,25 +90,23 @@ async function searchProductOnline(input: ProductSearchInput): Promise<ProductSe
       });
     }
 
-    // Process organic results as a fallback or supplement if not enough shopping results
     if (results.length < 5 && searchData.organic_results && searchData.organic_results.length > 0) {
       searchData.organic_results.forEach((item: any) => {
-         if (results.length < 5) { // Limit to 5 results total
-            // Try to find price in snippet or title if not a shopping result
+         if (results.length < 5) {
             let priceMatch = item.snippet?.match(/\$?([0-9,]+\.?[0-9]*)/) || item.title?.match(/\$?([0-9,]+\.?[0-9]*)/);
             let extractedPrice;
             if (priceMatch && priceMatch[1]) {
               extractedPrice = parseFloat(priceMatch[1].replace(/,/g, ''));
             }
 
-            // Basic check for relevance (e.g., contains product name in title)
-            if (item.title?.toLowerCase().includes(productName.toLowerCase().split(' ')[0])) { // Match first word of product
+            if (item.title?.toLowerCase().includes(productName.toLowerCase().split(' ')[0])) {
                 results.push({
-                    sourceName: item.source || new URL(item.link).hostname,
+                    vendorName: item.source || new URL(item.link).hostname, // Use source or hostname as vendorName
                     title: item.title,
                     link: item.link,
+                    // contactOrQuoteUrl: undefined, // LLM will infer this
                     extractedPrice: extractedPrice,
-                    priceCurrency: 'USD', // Assume USD for organic unless specified
+                    priceCurrency: 'USD',
                     snippet: item.snippet,
                     quantityContext: `Required: ${requiredQuantity || 1}. Source: Organic result. Verify price and bulk availability.`,
                 });
@@ -120,20 +117,19 @@ async function searchProductOnline(input: ProductSearchInput): Promise<ProductSe
     
     if (results.length === 0) {
         console.log(`Product Search Tool: No relevant product listings found for "${productName}".`);
-        return [{ title: productName, snippet: 'No relevant product listings found via web search.' }];
+        return [{ vendorName: productName, title: productName, snippet: 'No relevant product listings found via web search.' }];
     }
 
-    // Sort by price (cheapest first) and return top 3-5
     const sortedResults = results
-        .filter(r => r.extractedPrice !== undefined && r.extractedPrice > 0) // Filter out items without a valid price
+        .filter(r => r.extractedPrice !== undefined && r.extractedPrice > 0)
         .sort((a, b) => (a.extractedPrice ?? Infinity) - (b.extractedPrice ?? Infinity));
     
     console.log(`Product Search Tool: Found ${sortedResults.length} potential options for "${productName}". Returning top ${Math.min(sortedResults.length, 3)}.`);
-    return sortedResults.slice(0, 3); // Return top 3
+    return sortedResults.slice(0, 3);
 
   } catch (error) {
     console.error('Error performing product search via SerpAPI:', error);
-    return [{ title: productName, snippet: `Error during web search: ${error instanceof Error ? error.message : 'Unknown error'}` }];
+    return [{ vendorName: productName, title: productName, snippet: `Error during web search: ${error instanceof Error ? error.message : 'Unknown error'}` }];
   }
 }
 
@@ -141,9 +137,9 @@ async function searchProductOnline(input: ProductSearchInput): Promise<ProductSe
 export const productSearchTool = ai.defineTool(
   {
     name: 'productSearchTool',
-    description: 'Searches online using Google Shopping and Google Search for product pricing, vendor information, and purchase links. Tries to consider required quantity and returns up to 3-5 best options sorted by price.',
+    description: 'Searches online using Google Shopping and Google Search for product pricing, vendor information, and purchase links. Tries to consider required quantity and returns up to 3 best options sorted by price. The "contactOrQuoteUrl" field will likely be undefined and should be inferred by the calling LLM if needed.',
     inputSchema: ProductSearchInputSchema,
     outputSchema: ProductSearchOutputSchema,
   },
-  searchProductOnline // The implementation function
+  searchProductOnline 
 );

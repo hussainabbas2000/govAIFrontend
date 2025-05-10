@@ -12,9 +12,9 @@ import Loading from '@/app/loading';
 import { Icons } from '@/components/icons';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { DollarSign, ExternalLink, Info, ListTree, Phone, ShoppingCart, Terminal } from 'lucide-react';
+import { DollarSign, ExternalLink, Info, ListTree, Phone, ShoppingCart, Terminal, Layers } from 'lucide-react';
 import Link from 'next/link';
-import type { OngoingBid } from '@/app/page'; // Import OngoingBid type
+import type { OngoingBid } from '@/app/page';
 
 
 interface BidSummary extends SummarizeContractOpportunityOutput {
@@ -46,15 +46,13 @@ export default function RfqPage() {
       setError(null);
 
       try {
-        // 1. Fetch opportunity details
-        const allOpportunities = await getSamGovOpportunities({}); // Assuming this uses cache/dummy as per previous setup
+        const allOpportunities = await getSamGovOpportunities({});
         const currentOpportunity = allOpportunities.find(opp => opp.id === id);
         if (!currentOpportunity) {
           throw new Error('Opportunity not found.');
         }
         setOpportunity(currentOpportunity);
 
-        // 2. Fetch AI-generated bid summary
         const summaryOutput = await summarizeContractOpportunity({ opportunity: currentOpportunity });
         setBidSummary({
           ...summaryOutput,
@@ -62,7 +60,6 @@ export default function RfqPage() {
           id: currentOpportunity.id,
         });
 
-        // 3. Fetch product pricing using AI and the new tool-based flow
         if (summaryOutput.requiredProductService && summaryOutput.requiredProductService.length > 0 && summaryOutput.quantity) {
           const pricingInput: FindProductPricingInput = {
             productList: summaryOutput.requiredProductService,
@@ -74,13 +71,13 @@ export default function RfqPage() {
           setPricingInfo(pricingOutput);
         } else {
           console.log("No required products/services or quantity found in summary. Setting empty pricing info.");
-          setPricingInfo({ pricedItems: [], totalAmount: 0 });
+          setPricingInfo({ productsWithOffers: [], overallTotalAmount: 0 });
         }
 
       } catch (err: any) {
         console.error('Error fetching opportunity or pricing:', err);
         setError(err.message || 'Failed to load RFQ details.');
-        setPricingInfo({ pricedItems: [], totalAmount: 0 }); // Ensure pricingInfo is in a valid state on error
+        setPricingInfo({ productsWithOffers: [], overallTotalAmount: 0 });
       } finally {
         setLoading(false);
       }
@@ -91,7 +88,6 @@ export default function RfqPage() {
 
   const handleProceedToBidSubmission = () => {
      if (!id || !isClient) return;
-    // Update the bid status in localStorage
     const existingBidsString = localStorage.getItem('ongoingBids');
     let existingBids: OngoingBid[] = [];
     if (existingBidsString) {
@@ -105,7 +101,7 @@ export default function RfqPage() {
 
     const bidIndex = existingBids.findIndex(b => b.id === id);
     if (bidIndex !== -1) {
-      existingBids[bidIndex].status = "Bid Submitted"; // Update to Bid Submitted
+      existingBids[bidIndex].status = "Bid Submitted";
       localStorage.setItem('ongoingBids', JSON.stringify(existingBids));
       console.log(`Bid ${id} status updated to Bid Submitted.`);
     } else {
@@ -131,13 +127,13 @@ export default function RfqPage() {
     );
   }
 
-  // Ensure components don't crash if data is partially missing
   const safeBidSummaryTitle = bidSummary?.title || opportunity?.title || "N/A";
   const safeBidSummaryId = bidSummary?.id || opportunity?.id || "N/A";
+  const hasPricingData = pricingInfo && pricingInfo.productsWithOffers.some(p => p.offers.length > 0);
 
   return (
     <main className="flex-1 p-6 bg-gradient-to-br from-background to-secondary/10 animate-fadeIn">
-      <div className="container mx-auto max-w-4xl">
+      <div className="container mx-auto max-w-5xl"> {/* Increased max-width for wider table */}
         <Button onClick={() => router.back()} variant="outline" className="mb-6 group transition-transform hover:-translate-x-1">
           <Icons.arrowRight className="mr-2 h-4 w-4 transform rotate-180 group-hover:animate-pulse" />
           Back to Bid Summary
@@ -153,56 +149,84 @@ export default function RfqPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
-            {pricingInfo && pricingInfo.pricedItems.length > 0 ? (
+            {hasPricingData ? (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[25%]">Item</TableHead>
+                      <TableHead className="w-[20%]">Item</TableHead>
                       <TableHead className="w-[15%]">Identified Qty</TableHead>
-                      <TableHead className="text-right w-[15%]">Rate</TableHead>
-                      <TableHead className="text-right w-[15%]">Subtotal</TableHead>
+                      <TableHead className="w-[15%]">Vendor</TableHead>
+                      <TableHead className="text-right w-[10%]">Rate</TableHead>
+                      <TableHead className="text-right w-[10%]">Subtotal</TableHead>
                       <TableHead className="w-[15%]">Website</TableHead>
-                      <TableHead className="w-[15%]">Vendor Contact</TableHead>
+                      <TableHead className="w-[15%]">Contact/Quote URL</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pricingInfo.pricedItems.map((item, index) => (
-                      <TableRow key={index} className="hover:bg-muted/50 transition-colors">
-                        <TableCell className="font-medium">{item.name || 'N/A'}</TableCell>
-                        <TableCell>{item.identifiedQuantity || 'N/A'}</TableCell>
-                        <TableCell className="text-right">
-                          {typeof item.rate === 'number' && item.rate > 0 ? `$${item.rate.toFixed(2)}` : 'N/A'}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold">
-                          {typeof item.subtotal === 'number' && item.subtotal > 0 ? `$${item.subtotal.toFixed(2)}` : 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          {item.websiteLink && item.websiteLink !== "N/A" ? (
-                            <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:underline">
-                              <a href={item.websiteLink.startsWith('http') ? item.websiteLink : `http://${item.websiteLink}`} target="_blank" rel="noopener noreferrer" className="flex items-center">
-                                View <ExternalLink className="h-3 w-3 ml-1" />
-                              </a>
-                            </Button>
-                          ) : (
-                            item.websiteLink || 'N/A' // Show "N/A" if it's set, otherwise the value (which might be an error message from tool)
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {item.vendorContactInfo || 'N/A'}
-                        </TableCell>
-                      </TableRow>
+                    {pricingInfo?.productsWithOffers.map(productOfferGroup => (
+                      productOfferGroup.offers.length > 0 ? (
+                        productOfferGroup.offers.map((offer, offerIndex) => (
+                          <TableRow key={`${productOfferGroup.productName}-${offerIndex}`} className="hover:bg-muted/50 transition-colors">
+                            {offerIndex === 0 ? (
+                              <TableCell rowSpan={productOfferGroup.offers.length} className="font-medium align-top border-r">
+                                {productOfferGroup.productName}
+                              </TableCell>
+                            ) : null}
+                             {offerIndex === 0 ? (
+                              <TableCell rowSpan={productOfferGroup.offers.length} className="align-top border-r">
+                                {productOfferGroup.identifiedQuantity}
+                              </TableCell>
+                            ) : null}
+                            <TableCell className="font-medium">{offer.vendorName || 'N/A'}</TableCell>
+                            <TableCell className="text-right">
+                              {typeof offer.rate === 'number' && offer.rate > 0 ? `$${offer.rate.toFixed(2)}` : 'N/A'}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold">
+                              {typeof offer.subtotal === 'number' && offer.subtotal > 0 ? `$${offer.subtotal.toFixed(2)}` : 'N/A'}
+                            </TableCell>
+                            <TableCell>
+                              {offer.websiteLink && offer.websiteLink !== "N/A" ? (
+                                <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:underline">
+                                  <a href={offer.websiteLink.startsWith('http') ? offer.websiteLink : `http://${offer.websiteLink}`} target="_blank" rel="noopener noreferrer" className="flex items-center break-all">
+                                    View Product <ExternalLink className="h-3 w-3 ml-1 shrink-0" />
+                                  </a>
+                                </Button>
+                              ) : (
+                                offer.websiteLink || 'N/A'
+                              )}
+                            </TableCell>
+                            <TableCell>
+                               {offer.contactOrQuoteUrl && offer.contactOrQuoteUrl !== "N/A" ? (
+                                <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:underline">
+                                  <a href={offer.contactOrQuoteUrl.startsWith('http') ? offer.contactOrQuoteUrl : `http://${offer.contactOrQuoteUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center break-all">
+                                    Contact/Quote <ExternalLink className="h-3 w-3 ml-1 shrink-0" />
+                                  </a>
+                                </Button>
+                              ) : (
+                                offer.contactOrQuoteUrl || 'N/A'
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow key={`${productOfferGroup.productName}-no-offers`}>
+                           <TableCell className="font-medium border-r">{productOfferGroup.productName}</TableCell>
+                           <TableCell className="border-r">{productOfferGroup.identifiedQuantity}</TableCell>
+                           <TableCell colSpan={5} className="text-center text-muted-foreground italic">No offers found for this product.</TableCell>
+                        </TableRow>
+                      )
                     ))}
                   </TableBody>
                 </Table>
               </div>
             ) : (
               <Alert>
-                <ListTree className="h-4 w-4" />
+                <Layers className="h-4 w-4" />
                 <AlertTitle>No Pricing Information Available</AlertTitle>
                 <AlertDescription>
                   Could not retrieve specific pricing details for the items at this time. This might be due to the nature of the products/services, lack of available online data, or an issue with the search tool.
-                  { pricingInfo?.pricedItems?.some(item => item.identifiedQuantity === "Error in processing") && " There was an error processing some items."}
+                  { pricingInfo?.productsWithOffers?.some(pog => pog.identifiedQuantity === "Error in AI processing") && " There was an error processing some items."}
                 </AlertDescription>
               </Alert>
             )}
@@ -210,7 +234,7 @@ export default function RfqPage() {
             <div className="mt-6 pt-6 border-t flex flex-col sm:flex-row justify-between items-center">
               <div className="text-lg font-bold text-primary flex items-center mb-4 sm:mb-0">
                 <DollarSign className="h-6 w-6 mr-2" />
-                Total Estimated Amount: ${pricingInfo?.totalAmount?.toFixed(2) || '0.00'}
+                Total Estimated Amount (Best Offers): ${pricingInfo?.overallTotalAmount?.toFixed(2) || '0.00'}
               </div>
               <div className="flex space-x-3">
                 <Button variant="outline" onClick={() => alert("Save RFQ functionality not implemented.")}>Save RFQ</Button>
@@ -223,7 +247,7 @@ export default function RfqPage() {
               <AlertTitle className="text-accent">Disclaimer</AlertTitle>
               <AlertDescription>
                 The pricing information provided is AI-assisted and based on automated web searches. It is for estimation purposes only. Actual prices may vary. Always verify with vendors.
-                If "N/A" or error messages appear, it indicates that information could not be reliably retrieved.
+                If "N/A" or error messages appear, it indicates that information could not be reliably retrieved. The "Total Estimated Amount" is based on the cheapest offer found for each product.
               </AlertDescription>
             </Alert>
 
