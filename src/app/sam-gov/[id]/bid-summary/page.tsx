@@ -11,14 +11,14 @@ import { Icons } from '@/components/icons';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, List, FileText, Edit, AlertCircle, ShoppingCart } from 'lucide-react'; // Import Terminal and List icons
-import type { OngoingBid } from '@/app/page'; // Import OngoingBid type
+import { Terminal, List, FileText, Edit, AlertCircle, ShoppingCart } from 'lucide-react';
+import type { OngoingBid } from '@/app/page';
 
 interface BidSummary extends SummarizeContractOpportunityOutput {
   title: string;
   id: string;
-  agency: string; // Add agency for OngoingBid
-  originalOpportunityLink?: string; // Link to the original opportunity
+  agency: string;
+  originalOpportunityLink?: string;
   originalClosingDate?: string;
 }
 
@@ -48,15 +48,13 @@ export default function BidSummaryPage() {
       setError(null);
 
       try {
-        // 1. Fetch the specific opportunity details
-        const allOpportunities = await getSamGovOpportunities({}); // Assuming this can fetch/filter by ID or you filter client-side
+        const allOpportunities = await getSamGovOpportunities({});
         const opportunity = allOpportunities.find(opp => opp.id === id);
 
         if (!opportunity) {
           throw new Error('Opportunity not found.');
         }
 
-        // 2. Call the AI summarization flow
         console.log("Calling AI to summarize opportunity:", opportunity);
         const aiSummary = await summarizeContractOpportunity({ opportunity });
         console.log("AI Summary received:", aiSummary);
@@ -65,7 +63,7 @@ export default function BidSummaryPage() {
           ...aiSummary,
           title: opportunity.title,
           id: opportunity.id,
-          agency: opportunity.department || 'N/A', // Use department as agency
+          agency: opportunity.department || 'N/A',
           originalOpportunityLink: opportunity.link,
           originalClosingDate: opportunity.closingDate,
         });
@@ -93,33 +91,31 @@ export default function BidSummaryPage() {
       if (existingBidsString) {
         try {
           existingBids = JSON.parse(existingBidsString);
-          if (!Array.isArray(existingBids)) { // Ensure it's an array
+          if (!Array.isArray(existingBids)) {
             console.warn("Corrupted 'ongoingBids' in localStorage was not an array. Resetting.");
             existingBids = [];
           }
         } catch (e) {
           console.error("Failed to parse existing bids from localStorage, resetting.", e);
-          localStorage.removeItem('ongoingBids'); // Clear corrupted data
+          localStorage.removeItem('ongoingBids');
         }
       }
 
       const bidIndex = existingBids.findIndex(b => b.id === summary.id);
 
       if (bidIndex !== -1) {
-        // Update existing bid status if necessary (though "Drafting" is usually the first state)
         if (existingBids[bidIndex].status !== "Drafting") {
-            existingBids[bidIndex].status = "Drafting"; // Or a relevant initial status
+            existingBids[bidIndex].status = "Drafting";
         }
         console.log(`Bid ${summary.id} already exists, status confirmed/updated to Drafting.`);
       } else {
-        // Add new bid if it doesn't exist
         const newBid: OngoingBid = {
           id: summary.id,
           title: summary.title,
           agency: summary.agency,
-          status: "Drafting", // Initial status when bidding process starts
+          status: "Drafting",
           deadline: summary.originalClosingDate || 'N/A',
-          source: 'SAM.gov', // Assuming this page is for SAM.gov
+          source: 'SAM.gov',
           linkToOpportunity: summary.originalOpportunityLink || `/sam-gov/${summary.id}`,
         };
         existingBids.push(newBid);
@@ -127,9 +123,6 @@ export default function BidSummaryPage() {
       }
 
       localStorage.setItem('ongoingBids', JSON.stringify(existingBids));
-      // Optionally, navigate or show a success message
-      // router.push('/'); // Example: Navigate to dashboard after starting
-      // For now, let's assume we stay on this page or proceed to RFQ
       console.log("Bidding process started for:", summary.id);
 
     } catch (e: any) {
@@ -142,9 +135,8 @@ export default function BidSummaryPage() {
 
   const handleProceedToQuoteRequest = () => {
     if (!summary || !isClient) return;
-    handleStartBiddingProcess(); // Ensure bid is marked as started/drafting
+    handleStartBiddingProcess(); 
 
-    // Update the bid status to "RFQs Sent" before navigating
     const existingBidsString = localStorage.getItem('ongoingBids');
     let existingBids: OngoingBid[] = [];
     if (existingBidsString) {
@@ -162,7 +154,6 @@ export default function BidSummaryPage() {
       localStorage.setItem('ongoingBids', JSON.stringify(existingBids));
       console.log(`Bid ${summary.id} status updated to RFQs Sent.`);
     } else {
-      // This case should ideally not happen if handleStartBiddingProcess worked
       console.warn(`Bid ${summary.id} not found in ongoing bids to update for RFQ. Adding it now.`);
        const newBid: OngoingBid = {
         id: summary.id,
@@ -173,7 +164,7 @@ export default function BidSummaryPage() {
         source: 'SAM.gov',
         linkToOpportunity: summary.originalOpportunityLink || `/sam-gov/${summary.id}`,
       };
-      existingBids.push(newBid); // Add if somehow missed
+      existingBids.push(newBid);
       localStorage.setItem('ongoingBids', JSON.stringify(existingBids));
     }
     
@@ -185,7 +176,7 @@ export default function BidSummaryPage() {
     return <Loading />;
   }
 
-  if (error && !isSubmitting) { // Don't show main error if submitting error occurs
+  if (error && !isSubmitting) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center p-6">
         <Alert variant="destructive" className="w-full max-w-lg">
@@ -200,7 +191,7 @@ export default function BidSummaryPage() {
     );
   }
 
-  if (!summary && !loading && !error) { // Handle case where summary is null but no error/loading
+  if (!summary && !loading && !error) {
     return (
       <main className="flex flex-1 items-center justify-center p-6">
         <p>Bid summary could not be loaded.</p>
@@ -214,7 +205,7 @@ export default function BidSummaryPage() {
 
   return (
     <main className="flex-1 p-6 bg-gradient-to-br from-background to-secondary/20 animate-fadeIn">
-      <div className="container mx-auto max-w-3xl"> {/* Max width increased slightly */}
+      <div className="container mx-auto max-w-3xl">
         <Button onClick={() => router.back()} variant="outline" className="mb-6 group transition-transform hover:-translate-x-1">
            <Icons.arrowRight className="mr-2 h-4 w-4 transform rotate-180 group-hover:animate-pulse" />
           Back to Opportunity Details
@@ -250,11 +241,11 @@ export default function BidSummaryPage() {
                   <p className="text-base font-medium text-foreground italic">None specified</p>
                 )
               ) : (
-                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-20 w-full" />
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {/* Changed to md:grid-cols-2 for better layout on medium screens */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col space-y-1 p-4 border rounded-md bg-background shadow-sm transition-shadow hover:shadow-md">
                 <Label className="text-sm font-medium text-muted-foreground">Estimated Quantities</Label>
                 {summary ? (
@@ -268,7 +259,7 @@ export default function BidSummaryPage() {
                         <p className="text-base font-medium text-foreground italic">None specified</p>
                     )
                 ) : (
-                    <Skeleton className="h-6 w-full" />
+                   <Skeleton className="h-12 w-full" />
                 )}
                 </div>
 
@@ -277,7 +268,7 @@ export default function BidSummaryPage() {
                 {summary ? (
                     <p className="text-base font-medium text-foreground">{summary.deadline}</p>
                 ) : (
-                    <Skeleton className="h-6 w-1/4" />
+                    <Skeleton className="h-6 w-1/2" />
                 )}
                 </div>
 
@@ -286,7 +277,7 @@ export default function BidSummaryPage() {
                 {summary ? (
                     <p className="text-base font-medium text-foreground">{summary.location}</p>
                 ) : (
-                    <Skeleton className="h-6 w-1/2" />
+                    <Skeleton className="h-6 w-3/4" />
                 )}
                 </div>
             </div>
@@ -304,7 +295,7 @@ export default function BidSummaryPage() {
                 {isSubmitting && !submissionError ? <Icons.loader className="mr-2 h-4 w-4 animate-spin" /> : null}
                 {existingBidIsDrafting() ? "Update Bid Draft" : "Start Bidding Process"}
               </Button>
-              <Button onClick={handleProceedToQuoteRequest} disabled={isSubmitting || !summary || !existingBidIsDrafting()} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Button onClick={handleProceedToQuoteRequest} disabled={isSubmitting || !summary} className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 Proceed to Quote Request
               </Button>
@@ -313,7 +304,6 @@ export default function BidSummaryPage() {
         </Card>
       </div>
 
-      {/* Add Tailwind CSS for animations */}
       <style jsx global>{`
         @keyframes fadeIn {
           from { opacity: 0; }
