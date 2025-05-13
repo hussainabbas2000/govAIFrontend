@@ -22,7 +22,7 @@ export type SummarizeContractOpportunityInput = z.infer<typeof SummarizeContract
 // Define output schema for extracted details
 const SummarizeContractOpportunityOutputSchema = z.object({
   requiredProductService: z.array(z.string()).describe('A list of all main products or services required by the opportunity.'),
-  quantity: z.string().describe('The estimated quantity or scale of the product/service needed (e.g., "500 users", "10 FTEs", "20,000 sq ft", "5 networks", "150 vehicles", "500 SATA 2 HDD, 200 2TB DDR4 RAM, 300 Intel i9-9700K Processors"). Extract any numerical value related to quantity or scale mentioned for the primary requirements. If specific multiple hardware items are listed with quantities, include them all.'),
+  quantities: z.record(z.string(), z.number()).describe('An object mapping each required product/service to its numerical quantity. If a quantity is not specified for a product, it defaults to 1.'),
   deadline: z.string().describe('The closing date or response deadline for the opportunity.'),
   location: z.string().describe('The primary location where the work will be performed or delivered.'),
 });
@@ -36,7 +36,7 @@ const prompt = ai.definePrompt({
   name: 'summarizeContractOpportunityPrompt',
   input: { schema: SummarizeContractOpportunityInputSchema },
   output: { schema: SummarizeContractOpportunityOutputSchema },
-  prompt: `Analyze the following contract opportunity details and extract the requested information. Focus on identifying *all* core requirements, any mentioned quantity/scale, the deadline, and the primary location.
+  prompt: `Analyze the following contract opportunity details and extract the requested information. Focus on identifying *all* core requirements, their quantities, the deadline, and the primary location.
 
 Opportunity Title: {{{opportunity.title}}}
 Opportunity Type: {{{opportunity.type}}}
@@ -52,11 +52,15 @@ Description:
 
 Based *only* on the information provided above, extract the following:
 1.  **Required Product/Service:** Identify *all* distinct main items, tasks, or services being procured. List each primary product or service. Examples: "IT support", "Network Management", "Cybersecurity services", "Facility Wing Construction", "Janitorial Services", "Penetration Testing", "Office Supplies", "Grant Management Software", "Vehicle Maintenance", "Translation Services", "Environmental Assessment", "Cloud Hosting", "IT Hardware Procurement", "SATA HDD", "DDR4 RAM", "Intel Processors". Return these as an array of strings. Be concise for each item.
-2.  **Quantity:** Find any mention of quantity, number of units, size (e.g., sq ft), number of personnel (FTEs), user count, number of systems/networks, vehicle count, or other scale indicators within the title or description related to the core requirements. *Crucially, if specific hardware items like HDDs, RAM, or Processors are listed with quantities, extract those specific quantities and item names (e.g., "500 SATA 2 HDD, 200 2TB DDR4 RAM, 300 Intel i9-9700K Processors").* If only a general scale is mentioned (like users or sq ft), report that. If multiple quantities are mentioned, focus on the most prominent one(s) or the specific hardware quantities if available. If none is explicitly stated, respond with "Not specified".
+2.  **Quantities:** For each item listed in 'requiredProductService' (result of step 1), determine its numerical quantity.
+    - If a specific numerical quantity is mentioned for an item (e.g., "500 units of X", "200 Ys", "500 SATA 2 HDD", "200 2TB DDR4 RAM"), use that number.
+    - If an item is listed in 'requiredProductService' but no specific numerical quantity is provided for it in the description, assign a quantity of 1 to that item.
+    - If the overall description gives a general scale (e.g., "for 500 users", "20,000 sq ft") but not for individual items, still assign a quantity of 1 to each distinct product/service identified in 'requiredProductService', unless a more specific quantity can be inferred for that item.
+    - Structure this as a JSON object where keys are the product/service names (matching those in 'requiredProductService') and values are their corresponding numerical quantities. Example: {"SATA HDD": 500, "2TB DDR4 RAM": 200, "Intel i9-9700K Processors": 300, "IT Hardware Procurement": 1}.
 3.  **Deadline:** Extract the closing date.
 4.  **Location:** Extract the primary place of performance location (City, State, Zip if available). If multiple locations are mentioned, use the primary one listed or inferred.
 
-Return the extracted information in the specified JSON format, ensuring 'requiredProductService' is an array of strings. Ensure the 'quantity' field captures specific hardware quantities accurately if mentioned.`,
+Return the extracted information in the specified JSON format, ensuring 'requiredProductService' is an array of strings and 'quantities' is an object mapping product names to numbers.`,
 });
 
 
@@ -75,8 +79,9 @@ const summarizeContractOpportunityFlow = ai.defineFlow<
    // Ensure all fields have values, providing defaults if necessary
    return {
     requiredProductService: output.requiredProductService || [], // Default to empty array
-    quantity: output.quantity || "Not specified",
+    quantities: output.quantities || {}, // Default to empty object
     deadline: output.deadline || input.opportunity.closingDate || "Not specified", // Fallback to original date
     location: output.location || "Could not determine",
    };
 });
+

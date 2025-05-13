@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getSamGovOpportunities, SamGovOpportunity } from '@/services/sam-gov';
 import { summarizeContractOpportunity, SummarizeContractOpportunityOutput } from '@/ai/flows/summarize-contract-opportunity';
@@ -51,7 +52,7 @@ interface VendorOffer {
 
 interface ProductOffersGroup {
   productName: string;
-  identifiedQuantity: string; // Original quantity string for this product (e.g., "500 units")
+  identifiedQuantity: string; // Display string for quantity (e.g., "500 units of X")
   offers: VendorOffer[];
 }
 
@@ -59,98 +60,6 @@ interface UiFindProductPricingOutput {
   productsWithOffers: ProductOffersGroup[];
   overallTotalAmount: number;
 }
-
-// Helper function to parse quantities from the summary string
-const parseProductQuantities = (quantityString: string, productList: string[]): Array<{ name: string; quantity: number; identifiedQuantity: string }> => {
-  const productQuantities: Array<{ name: string; quantity: number; identifiedQuantity: string }> = [];
-  const assignedProducts = new Set<string>(); // Keep track of products already assigned a quantity from the string
-
-  if (quantityString.toLowerCase() === "not specified" || quantityString === "") {
-    productList.forEach(productName => {
-      productQuantities.push({ name: productName, quantity: 1, identifiedQuantity: `1 unit of ${productName} (assumed)` });
-    });
-    return productQuantities;
-  }
-
-  // Split the quantity string by common delimiters like comma or "and", handling potential spaces
-  const quantityEntries = quantityString.split(/,\s*(?![^()]*\))|\s+and\s+/i).map(e => e.trim()).filter(e => e);
-
-  for (const entry of quantityEntries) {
-    // Regex to find a number, optional units, and the item description
-    // Example: "500 SATA 2 HDD", "200 units of 2TB DDR4 RAM"
-    const match = entry.match(/^(\d+)\s*(?:units\s*of\s*)?(.*)$/i);
-    if (match && match[1] && match[2]) {
-      const quantity = parseInt(match[1], 10);
-      const itemDescriptionInEntry = match[2].trim();
-
-      // Find the best matching product from productList for this itemDescriptionInEntry
-      let bestMatch: string | null = null;
-      let highestMatchScore = 0;
-
-      for (const productName of productList) {
-        if (assignedProducts.has(productName)) continue; // Skip if already assigned
-
-        const productNameLower = productName.toLowerCase();
-        const itemDescLower = itemDescriptionInEntry.toLowerCase();
-
-        let score = 0;
-        // Prioritize if product name is a significant part of the item description in the entry
-        if (itemDescLower.includes(productNameLower)) { 
-          score = productNameLower.length; 
-          // Bonus if it's a whole word match or starts with product name
-          const regexExact = new RegExp(`\\b${productNameLower}\\b`, 'i');
-          if (regexExact.test(itemDescLower)) {
-            score += productNameLower.length; // Double score for exact word match
-          }
-        }
-        
-        if (score > highestMatchScore) {
-          highestMatchScore = score;
-          bestMatch = productName;
-        }
-      }
-
-      if (bestMatch) {
-        productQuantities.push({
-          name: bestMatch,
-          quantity: quantity,
-          identifiedQuantity: entry // Use the full entry as the identified quantity string
-        });
-        assignedProducts.add(bestMatch);
-      } else {
-        console.warn(`Could not map entry "${entry}" to any product in productList: ${productList.join(', ')}. Parsed description: "${itemDescriptionInEntry}"`);
-      }
-    } else {
-       console.warn(`Could not parse quantity and item from entry: "${entry}"`);
-    }
-  }
-
-  // Add any products from productList that were not found in quantityString with a default quantity of 1
-  productList.forEach(productName => {
-    if (!assignedProducts.has(productName)) {
-      // Special case: if productList has only one item and quantityString is just a number.
-      if (productList.length === 1 && quantityEntries.length === 1 && /^\d+$/.test(quantityEntries[0])) {
-         const qtyOnly = parseInt(quantityEntries[0], 10);
-         productQuantities.push({ name: productName, quantity: qtyOnly, identifiedQuantity: `${qtyOnly} ${productName}` });
-      } else {
-         productQuantities.push({ name: productName, quantity: 1, identifiedQuantity: `1 unit of ${productName} (assumed)` });
-      }
-      assignedProducts.add(productName); // Mark as handled
-    }
-  });
-  
-  // Filter out duplicates that might have been added by the default catch-all if parsing was imperfect
-  const finalQuantities: Array<{ name: string; quantity: number; identifiedQuantity: string }> = [];
-  const seenNames = new Set<string>();
-  for(const pq of productQuantities) {
-      if(!seenNames.has(pq.name)){
-          finalQuantities.push(pq);
-          seenNames.add(pq.name);
-      }
-  }
-
-  return finalQuantities;
-};
 
 
 export default function RfqPage() {
@@ -190,20 +99,27 @@ export default function RfqPage() {
         console.log("Current opportunity set:", currentOpportunity);
 
         const summaryOutput = await summarizeContractOpportunity({ opportunity: currentOpportunity });
-        setBidSummary({
+        const currentBidSummary: BidSummary = { 
           ...summaryOutput,
           title: currentOpportunity.title,
           id: currentOpportunity.id,
-        });
+        };
+        setBidSummary(currentBidSummary);
         console.log("AI Summary received:", summaryOutput);
 
+        // Use the already correctly formatted quantities from summaryOutput
+        const productQuantitiesForApi = summaryOutput.quantities;
 
-        if (summaryOutput.requiredProductService && summaryOutput.requiredProductService.length > 0 && summaryOutput.quantity) {
-          const productsForApi = parseProductQuantities(summaryOutput.quantity, summaryOutput.requiredProductService);
-          console.log("Products for Flask API:", JSON.stringify(productsForApi.map(p => ({name: p.name, quantity: p.quantity})), null, 2));
+        if (summaryOutput.requiredProductService && summaryOutput.requiredProductService.length > 0 && productQuantitiesForApi) {
+          const productsForApi = summaryOutput.requiredProductService.map(productName => ({
+            name: productName,
+            quantity: productQuantitiesForApi[productName] || 1 // Default to 1 if quantity not in map
+          }));
+
+          console.log("Products for Flask API:", JSON.stringify(productsForApi, null, 2));
 
           const flaskApiPayload = {
-            products: productsForApi.map(p => ({ name: p.name, quantity: p.quantity })),
+            products: productsForApi,
           };
           console.log("Requesting bulk pricing with payload:", JSON.stringify(flaskApiPayload, null, 2));
 
@@ -225,15 +141,15 @@ export default function RfqPage() {
 
           // Transform Flask API data to UiFindProductPricingOutput
           const transformedProductsWithOffers: ProductOffersGroup[] = Object.entries(flaskData).map(([productName, apiOffers]) => {
-            // Find the original identifiedQuantity string for this product
-            const productInfo = productsForApi.find(p => p.name === productName);
-            const identifiedQuantityForDisplay = productInfo ? productInfo.identifiedQuantity : "N/A";
+            const aiQuantityForProduct = currentBidSummary.quantities[productName] || (apiOffers && apiOffers.length > 0 ? apiOffers[0].quantity : 1);
+            const identifiedQuantityForDisplay = `${aiQuantityForProduct} units of ${productName}`;
 
-            const offers: VendorOffer[] = apiOffers.map(apiOffer => ({
+
+            const offers: VendorOffer[] = (apiOffers || []).map(apiOffer => ({
               vendorName: apiOffer.seller,
               rate: apiOffer.unit_price,
               websiteLink: apiOffer.url,
-              contactOrQuoteUrl: apiOffer.contact_or_quote || apiOffer.url, // Use contact_or_quote if available, else fallback to main url
+              contactOrQuoteUrl: apiOffer.contact_or_quote || apiOffer.url,
               subtotal: apiOffer.total_cost,
               shipping: apiOffer.shipping,
               taxes: apiOffer.taxes,
@@ -247,7 +163,6 @@ export default function RfqPage() {
           });
 
           const overallTotalAmount = transformedProductsWithOffers.reduce((sum, productGroup) => {
-            // Assuming Flask API returns offers sorted with best (cheapest total_cost) first
             const bestOfferSubtotal = productGroup.offers.length > 0 ? productGroup.offers[0].subtotal : 0;
             return sum + bestOfferSubtotal;
           }, 0);
@@ -268,7 +183,7 @@ export default function RfqPage() {
         if (err.message && err.message.includes("Flask API")) {
             setPricingError(err.message);
         }
-        setPricingInfo({ productsWithOffers: [], overallTotalAmount: 0 }); // Ensure pricingInfo is reset on error
+        setPricingInfo({ productsWithOffers: [], overallTotalAmount: 0 });
       } finally {
         setLoading(false);
       }
@@ -286,17 +201,16 @@ export default function RfqPage() {
         existingBids = JSON.parse(existingBidsString);
       } catch (e) {
         console.error("Failed to parse existing bids from localStorage", e);
-        localStorage.removeItem('ongoingBids'); // Clear corrupted data if parsing fails
+        localStorage.removeItem('ongoingBids'); 
       }
     }
 
     const bidIndex = existingBids.findIndex(b => b.id === id);
     if (bidIndex !== -1) {
-      existingBids[bidIndex].status = "Bid Submitted"; // Or "Final Quotes Selected" then "Bid Submitted"
+      existingBids[bidIndex].status = "Bid Submitted";
       localStorage.setItem('ongoingBids', JSON.stringify(existingBids));
       console.log(`Bid ${id} status updated to Bid Submitted.`);
     } else {
-      // This should ideally not happen if "Start Bidding Process" worked correctly
       console.warn(`Bid ${id} not found in ongoing bids to update status. Adding it now.`);
       if (opportunity && bidSummary) {
           const newBid: OngoingBid = {
@@ -313,13 +227,11 @@ export default function RfqPage() {
       }
     }
     alert("Bid status updated to 'Bid Submitted'. Bid Submission page/functionality not yet implemented.");
-    // Potentially navigate to a bid submission page:
-    // router.push(`/bid-submission/${id}`);
   };
 
-  if (loading && !opportunity) return <Loading />; // Show full loading screen only if opportunity is not yet fetched
+  if (loading && !opportunity) return <Loading />; 
 
-  if (error && !opportunity) { // Show full page error only if opportunity failed to load
+  if (error && !opportunity) { 
     return (
       <main className="flex flex-1 flex-col items-center justify-center p-6">
         <Alert variant="destructive" className="w-full max-w-lg">
@@ -357,14 +269,14 @@ export default function RfqPage() {
           </CardHeader>
           <CardContent className="p-6 space-y-6">
             {loading && !pricingInfo && <div className="flex justify-center items-center py-10"><Icons.loader className="h-8 w-8 animate-spin text-primary" /> <p className="ml-2">Fetching pricing information...</p></div>}
-            {pricingError && opportunity && ( // Show error related to pricing if opportunity is loaded but pricing failed
+            {pricingError && opportunity && ( 
                  <Alert variant="destructive">
                     <Terminal className="h-4 w-4" />
                     <AlertTitle>Pricing Error</AlertTitle>
                     <AlertDescription>{pricingError}</AlertDescription>
                 </Alert>
             )}
-             {error && !pricingError && opportunity && ( // Show other errors if not pricing specific
+             {error && !pricingError && opportunity && ( 
                  <Alert variant="destructive">
                     <Terminal className="h-4 w-4" />
                     <AlertTitle>Error</AlertTitle>
