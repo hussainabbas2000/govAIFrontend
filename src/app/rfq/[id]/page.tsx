@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getSamGovOpportunities, SamGovOpportunity } from '@/services/sam-gov';
 import { summarizeContractOpportunity, SummarizeContractOpportunityOutput } from '@/ai/flows/summarize-contract-opportunity';
-import { findProductPricing, FindProductPricingOutput, FindProductPricingInput } from '@/ai/flows/find-product-pricing-flow';
+import { findProductPricing, FindProductPricingInput, FindProductPricingOutput as GenkitFindProductPricingOutput } from '@/ai/flows/find-product-pricing-flow';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Loading from '@/app/loading';
@@ -22,6 +21,45 @@ interface BidSummary extends SummarizeContractOpportunityOutput {
   id: string;
 }
 
+// Define the type for the pricing info received from the new API (Python script output)
+interface PythonProductOffer {
+  url: string;
+  contact_or_quote?: string;
+  unit_price: number;
+  total_cost: number;
+}
+
+interface PythonPricingApiResponse {
+  [productName: string]: PythonProductOffer[];
+}
+
+// Updated to match Genkit's FindProductPricingOutput structure
+interface ProductOffersGroup {
+  productName: string;
+  identifiedQuantity: string;
+  offers: VendorOffer[]; // Using VendorOffer from Genkit flow
+}
+
+interface VendorOffer {
+  vendorName?: string;
+  rate: number;
+  websiteLink?: string;
+  contactOrQuoteUrl?: string;
+  subtotal: number;
+  // Fields from Genkit's ProductSearchOutputItemSchema if needed
+  title?: string;
+  extractedPrice?: number;
+  priceCurrency?: string;
+  snippet?: string;
+  quantityContext?: string;
+}
+
+
+interface UiFindProductPricingOutput {
+  productsWithOffers: ProductOffersGroup[];
+  overallTotalAmount: number;
+}
+
 export default function RfqPage() {
   const params = useParams();
   const router = useRouter();
@@ -29,7 +67,7 @@ export default function RfqPage() {
 
   const [opportunity, setOpportunity] = useState<SamGovOpportunity | null>(null);
   const [bidSummary, setBidSummary] = useState<BidSummary | null>(null);
-  const [pricingInfo, setPricingInfo] = useState<FindProductPricingOutput | null>(null);
+  const [pricingInfo, setPricingInfo] = useState<UiFindProductPricingOutput | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
@@ -37,6 +75,38 @@ export default function RfqPage() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Helper function to transform the API response to the existing pricingInfo structure
+const transformPythonPricingResponse = (apiResponse: PythonPricingApiResponse, productQuantities: { [key: string]: number }): UiFindProductPricingOutput => {
+  const productsWithOffers: ProductOffersGroup[] = Object.entries(apiResponse).map(([productName, offers]) => ({
+    productName,
+    identifiedQuantity: productQuantities[productName]?.toString() || 'N/A',
+    offers: offers.map(offer => ({
+      vendorName: new URL(offer.url).hostname,
+      rate: offer.unit_price,
+      websiteLink: offer.url,
+      contactOrQuoteUrl: offer.contact_or_quote,
+      subtotal: offer.total_cost,
+      title: productName,
+      extractedPrice: offer.unit_price,
+      priceCurrency: 'USD',
+      snippet: '',
+      quantityContext: `Required: ${productQuantities[productName] || 'N/A'}`
+    })),
+  }));
+
+  const overallTotalAmount = productsWithOffers.reduce((sum, productGroup) => {
+    const cheapestOffer = productGroup.offers.reduce((minOffer, currentOffer) => {
+      return (minOffer === null || currentOffer.subtotal < minOffer.subtotal) ? currentOffer : minOffer;
+    }, null as VendorOffer | null);
+    return sum + (cheapestOffer?.subtotal || 0);
+  }, 0);
+
+  return {
+    productsWithOffers,
+    overallTotalAmount,
+  };
+};
 
   useEffect(() => {
     if (!isClient || !id) return;
@@ -66,9 +136,36 @@ export default function RfqPage() {
             quantityDetails: summaryOutput.quantity,
           };
           console.log("Requesting pricing with input:", JSON.stringify(pricingInput, null, 2));
-          const pricingOutput = await findProductPricing(pricingInput);
-          console.log("Received pricing info:", JSON.stringify(pricingOutput, null, 2));
-          setPricingInfo(pricingOutput);
+          
+          const genkitPricingOutput: GenkitFindProductPricingOutput = await findProductPricing(pricingInput);
+          console.log("Received Genkit pricing info:", JSON.stringify(genkitPricingOutput, null, 2));
+          
+          // Transform Genkit's output to UiFindProductPricingOutput
+          // This assumes genkitPricingOutput.productsWithOffers structure is compatible
+          // or you might need a more detailed transformation function.
+          const uiPricingInfo: UiFindProductPricingOutput = {
+             productsWithOffers: genkitPricingOutput.productsWithOffers.map(po => ({
+                productName: po.productName,
+                identifiedQuantity: po.identifiedQuantity,
+                offers: po.offers.map(offer => ({
+                    vendorName: offer.vendorName,
+                    rate: offer.rate, // Use 'rate' which should be the unit_price
+                    websiteLink: offer.websiteLink,
+                    contactOrQuoteUrl: offer.contactOrQuoteUrl,
+                    subtotal: offer.subtotal,
+                    // Make sure all required fields for VendorOffer are mapped
+                    title: offer.title || po.productName, // Fallback for title
+                    extractedPrice: offer.extractedPrice !== undefined ? offer.extractedPrice : offer.rate, // Use extractedPrice or rate
+                    priceCurrency: offer.priceCurrency || 'USD',
+                    snippet: offer.snippet,
+                    quantityContext: offer.quantityContext
+                }))
+             })),
+             overallTotalAmount: genkitPricingOutput.overallTotalAmount
+          };
+          setPricingInfo(uiPricingInfo);
+
+
         } else {
           console.log("No required products/services or quantity found in summary. Setting empty pricing info.");
           setPricingInfo({ productsWithOffers: [], overallTotalAmount: 0 });
@@ -167,7 +264,7 @@ export default function RfqPage() {
                     {pricingInfo?.productsWithOffers.map(productOfferGroup => (
                       productOfferGroup.offers.length > 0 ? (
                         productOfferGroup.offers.map((offer, offerIndex) => (
-                          <TableRow key={`${productOfferGroup.productName}-${offerIndex}`} className="hover:bg-muted/50 transition-colors">
+                          <TableRow key={`${productOfferGroup.productName}-${offer.vendorName || offerIndex}`} className="hover:bg-muted/50 transition-colors">
                             {offerIndex === 0 ? (
                               <TableCell rowSpan={productOfferGroup.offers.length} className="font-medium align-top border-r">
                                 {productOfferGroup.productName}
@@ -186,7 +283,7 @@ export default function RfqPage() {
                               {typeof offer.subtotal === 'number' && offer.subtotal > 0 ? `$${offer.subtotal.toFixed(2)}` : 'N/A'}
                             </TableCell>
                             <TableCell>
-                              {offer.websiteLink && offer.websiteLink !== "N/A" ? (
+                              {offer.websiteLink && offer.websiteLink !== "N/A" && !offer.websiteLink.includes("Error") && !offer.websiteLink.includes("SERP_API_KEY") ? (
                                 <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:underline">
                                   <a href={offer.websiteLink.startsWith('http') ? offer.websiteLink : `http://${offer.websiteLink}`} target="_blank" rel="noopener noreferrer" className="flex items-center break-all">
                                     View Product <ExternalLink className="h-3 w-3 ml-1 shrink-0" />
@@ -197,7 +294,7 @@ export default function RfqPage() {
                               )}
                             </TableCell>
                             <TableCell>
-                               {offer.contactOrQuoteUrl && offer.contactOrQuoteUrl !== "N/A" ? (
+                               {offer.contactOrQuoteUrl && offer.contactOrQuoteUrl !== "N/A" && !offer.contactOrQuoteUrl.includes("Error") && !offer.contactOrQuoteUrl.includes("SERP_API_KEY") ? (
                                 <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:underline">
                                   <a href={offer.contactOrQuoteUrl.startsWith('http') ? offer.contactOrQuoteUrl : `http://${offer.contactOrQuoteUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center break-all">
                                     Contact/Quote <ExternalLink className="h-3 w-3 ml-1 shrink-0" />
@@ -275,4 +372,3 @@ export default function RfqPage() {
     </main>
   );
 }
-

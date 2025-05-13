@@ -42,7 +42,10 @@ async function searchProductOnline(input: ProductSearchInput): Promise<ProductSe
 
   if (!serpApiKey) {
     console.warn('SERP_API_KEY is not set. Product search will not be performed.');
-    return [{ vendorName: productName, title: productName, snippet: 'SERP_API_KEY not configured. Real-time search unavailable.' }];
+    return [{
+      vendorName: productName, title: productName, snippet: 'SERP_API_KEY not configured. Real-time search unavailable.',
+      priceCurrency: ''
+    }];
   }
 
   let searchQuery = `buy ${productName}`;
@@ -67,7 +70,10 @@ async function searchProductOnline(input: ProductSearchInput): Promise<ProductSe
     if (!response.ok) {
       const errorData = await response.text();
       console.error(`SerpAPI request failed: ${response.status}`, errorData);
-      return [{ vendorName: productName, title: productName, snippet: `SerpAPI request failed: ${response.status}. ${errorData}` }];
+      return [{
+        vendorName: productName, title: productName, snippet: `SerpAPI request failed: ${response.status}. ${errorData}`,
+        priceCurrency: ''
+      }];
     }
     const searchData = await response.json();
 
@@ -117,7 +123,10 @@ async function searchProductOnline(input: ProductSearchInput): Promise<ProductSe
     
     if (results.length === 0) {
         console.log(`Product Search Tool: No relevant product listings found for "${productName}".`);
-        return [{ vendorName: productName, title: productName, snippet: 'No relevant product listings found via web search.' }];
+        return [{
+          vendorName: productName, title: productName, snippet: 'No relevant product listings found via web search.',
+          priceCurrency: ''
+        }];
     }
 
     const sortedResults = results
@@ -129,7 +138,10 @@ async function searchProductOnline(input: ProductSearchInput): Promise<ProductSe
 
   } catch (error) {
     console.error('Error performing product search via SerpAPI:', error);
-    return [{ vendorName: productName, title: productName, snippet: `Error during web search: ${error instanceof Error ? error.message : 'Unknown error'}` }];
+    return [{
+      vendorName: productName, title: productName, snippet: `Error during web search: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      priceCurrency: ''
+    }];
   }
 }
 

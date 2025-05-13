@@ -55,7 +55,7 @@ const prompt = ai.definePrompt({
   output: {schema: ProductPricingOutputSchema},
   prompt: `You are an expert AI research assistant specializing in procurement and supply chain analysis, with access to a web search tool ('productSearchTool').
 Your task is to process a list of product names and a string describing their quantities.
-For each product, you need to find up to three best vendor offers based on the lowest unit price for the specified bulk quantity.
+For each product, you need to find 3 best vendor offers based on the lowest unit price for the specified bulk quantity.
 
 Product List:
 {{#each productList}}
@@ -87,7 +87,7 @@ For each product in the 'productList':
 5.  Construct a 'ProductOffersSchema' object for the current product:
     - 'productName': The product name from the input 'productList'.
     - 'identifiedQuantity': As determined in step 1.
-    - 'offers': An array containing the (up to three) 'VendorOfferSchema' objects created in step 4. If no suitable offers are found, this array should be empty.
+    - 'offers': An array containing the (3) 'VendorOfferSchema' objects created in step 4. If no suitable offers are found, this array should be empty.
 
 6.  If the 'productSearchTool' returns no relevant results (e.g., empty array, or items with "No relevant product listings found" or "SERP_API_KEY not configured" in snippet), or if you cannot confidently select any best options after analyzing the results, then for that product, its 'offers' array in 'ProductOffersSchema' should be empty.
 
