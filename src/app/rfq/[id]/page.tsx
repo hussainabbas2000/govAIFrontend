@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getSamGovOpportunities, SamGovOpportunity } from '@/services/sam-gov';
 import { summarizeContractOpportunity, SummarizeContractOpportunityOutput } from '@/ai/flows/summarize-contract-opportunity';
-import { findProductPricing, FindProductPricingInput, FindProductPricingOutput as GenkitFindProductPricingOutput } from '@/ai/flows/find-product-pricing-flow';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Loading from '@/app/loading';
@@ -21,44 +20,113 @@ interface BidSummary extends SummarizeContractOpportunityOutput {
   id: string;
 }
 
-// Define the type for the pricing info received from the new API (Python script output)
-interface PythonProductOffer {
-  url: string;
-  contact_or_quote?: string;
+// --- Types for Flask API Response ---
+interface FlaskApiOffer {
+  seller: string;
   unit_price: number;
+  quantity: number; // Quantity requested, good for verification
+  shipping: number | null;
+  taxes: number | null;
   total_cost: number;
+  url: string;
+  contact_or_quote?: string; // Optional, as per your Python script's intent
 }
 
-interface PythonPricingApiResponse {
-  [productName: string]: PythonProductOffer[];
+interface FlaskApiResponse {
+  [productName: string]: FlaskApiOffer[];
+}
+// --- End Flask API Types ---
+
+// Updated to align with Flask API response and UI needs
+interface VendorOffer {
+  vendorName?: string;      // from FlaskApiOffer.seller
+  rate: number;             // from FlaskApiOffer.unit_price
+  websiteLink?: string;     // from FlaskApiOffer.url
+  contactOrQuoteUrl?: string; // from FlaskApiOffer.contact_or_quote or derived from .url
+  subtotal: number;         // from FlaskApiOffer.total_cost
+  shipping?: number | null; // from FlaskApiOffer.shipping
+  taxes?: number | null;    // from FlaskApiOffer.taxes
+  requestedQuantity?: number; // from FlaskApiOffer.quantity (for reference)
 }
 
-// Updated to match Genkit's FindProductPricingOutput structure
 interface ProductOffersGroup {
   productName: string;
-  identifiedQuantity: string;
-  offers: VendorOffer[]; // Using VendorOffer from Genkit flow
+  identifiedQuantity: string; // Original quantity string for this product (e.g., "500 units")
+  offers: VendorOffer[];
 }
-
-interface VendorOffer {
-  vendorName?: string;
-  rate: number;
-  websiteLink?: string;
-  contactOrQuoteUrl?: string;
-  subtotal: number;
-  // Fields from Genkit's ProductSearchOutputItemSchema if needed
-  title?: string;
-  extractedPrice?: number;
-  priceCurrency?: string;
-  snippet?: string;
-  quantityContext?: string;
-}
-
 
 interface UiFindProductPricingOutput {
   productsWithOffers: ProductOffersGroup[];
   overallTotalAmount: number;
 }
+
+// Helper function to parse quantities from the summary string
+const parseProductQuantities = (quantityString: string, productList: string[]): Array<{ name: string; quantity: number; identifiedQuantity: string }> => {
+  const productQuantities: Array<{ name: string; quantity: number; identifiedQuantity: string }> = [];
+
+  if (quantityString === "Not specified") {
+    productList.forEach(productName => {
+      productQuantities.push({ name: productName, quantity: 1, identifiedQuantity: "1 (assumed)" });
+    });
+    return productQuantities;
+  }
+
+  // Attempt to parse combined quantity string like "500 SATA 2 HDD units, 200 2TB DDR4 RAM"
+  // This regex tries to find "<number> <units (optional)> <product name pattern>"
+  // It iterates through productList and tries to find a match for each.
+  productList.forEach(productName => {
+    let num = 1; // Default quantity
+    let identifiedQtyStr = `1 unit of ${productName} (assumed)`;
+
+    // Create a regex to find the quantity for the current product.
+    // This needs to be somewhat flexible with product naming.
+    // Escape special characters in product name for regex
+    const escapedProductName = productName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Regex to find <number> followed by optional units, then the product name (case insensitive)
+    // It tries to capture the full phrase for identifiedQuantity as well.
+    const productRegex = new RegExp(`(\\d+)\\s*([a-zA-Z0-9\\s\\-\\.]*?${escapedProductName}[a-zA-Z0-9\\s\\-\\.]*)`, "i");
+    const match = quantityString.match(productRegex);
+
+    if (match && match[1] && match[2]) {
+      num = parseInt(match[1], 10);
+      // identifiedQtyStr = match[0].trim(); // The full matched phrase like "500 SATA 2 HDD units"
+      // More robust: construct identifiedQtyStr from parsed number and original product name from list
+      // We need to be careful not to just use match[2] as it might be too greedy or not specific enough
+      // Try to find the specific part of quantityString related to this product.
+      const parts = quantityString.split(/,|\sand\s/i);
+      const relevantPart = parts.find(p => p.toLowerCase().includes(productName.toLowerCase()));
+      identifiedQtyStr = relevantPart ? `${num} ${relevantPart.replace(new RegExp(`^\\d+\\s*`, 'i'), '').trim()}` : `${num} ${productName}`;
+      if (relevantPart && !relevantPart.toLowerCase().includes(productName.toLowerCase())) {
+        // if productName is a substring of the item in quantityString (e.g. productName "HDD", quantityString "500 SATA HDD")
+         identifiedQtyStr = `${num} ${productName}`;
+      } else if (relevantPart) {
+         // If productName is more generic than item in quantityString (e.g. productName "SATA HDD", quantityString "500 SATA 2 HDD units")
+         // We try to extract the more specific name from quantity string for display.
+         const specificNameMatch = relevantPart.match(new RegExp(`\\d+\\s*(.*${escapedProductName}.*)`, "i"));
+         if (specificNameMatch && specificNameMatch[1]) {
+            identifiedQtyStr = `${num} ${specificNameMatch[1].trim()}`;
+         } else {
+            identifiedQtyStr = `${num} ${productName}`;
+         }
+      } else {
+         identifiedQtyStr = `${num} ${productName}`;
+      }
+
+
+    } else if (productList.length === 1 && /^\d+/.test(quantityString)) {
+      // If only one product and quantity string starts with a number
+      const singleProductMatch = quantityString.match(/^(\d+)/);
+      if (singleProductMatch && singleProductMatch[1]) {
+        num = parseInt(singleProductMatch[1], 10);
+        identifiedQtyStr = `${num} ${productName}`; // Use original product name
+      }
+    }
+    productQuantities.push({ name: productName, quantity: num, identifiedQuantity: identifiedQtyStr });
+  });
+
+  return productQuantities;
+};
+
 
 export default function RfqPage() {
   const params = useParams();
@@ -71,42 +139,13 @@ export default function RfqPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [pricingError, setPricingError] = useState<string | null>(null);
+
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Helper function to transform the API response to the existing pricingInfo structure
-const transformPythonPricingResponse = (apiResponse: PythonPricingApiResponse, productQuantities: { [key: string]: number }): UiFindProductPricingOutput => {
-  const productsWithOffers: ProductOffersGroup[] = Object.entries(apiResponse).map(([productName, offers]) => ({
-    productName,
-    identifiedQuantity: productQuantities[productName]?.toString() || 'N/A',
-    offers: offers.map(offer => ({
-      vendorName: new URL(offer.url).hostname,
-      rate: offer.unit_price,
-      websiteLink: offer.url,
-      contactOrQuoteUrl: offer.contact_or_quote,
-      subtotal: offer.total_cost,
-      title: productName,
-      extractedPrice: offer.unit_price,
-      priceCurrency: 'USD',
-      snippet: '',
-      quantityContext: `Required: ${productQuantities[productName] || 'N/A'}`
-    })),
-  }));
-
-  const overallTotalAmount = productsWithOffers.reduce((sum, productGroup) => {
-    const cheapestOffer = productGroup.offers.reduce((minOffer, currentOffer) => {
-      return (minOffer === null || currentOffer.subtotal < minOffer.subtotal) ? currentOffer : minOffer;
-    }, null as VendorOffer | null);
-    return sum + (cheapestOffer?.subtotal || 0);
-  }, 0);
-
-  return {
-    productsWithOffers,
-    overallTotalAmount,
-  };
-};
 
   useEffect(() => {
     if (!isClient || !id) return;
@@ -114,6 +153,7 @@ const transformPythonPricingResponse = (apiResponse: PythonPricingApiResponse, p
     const fetchOpportunityAndPricing = async () => {
       setLoading(true);
       setError(null);
+      setPricingError(null);
 
       try {
         const allOpportunities = await getSamGovOpportunities({});
@@ -122,6 +162,7 @@ const transformPythonPricingResponse = (apiResponse: PythonPricingApiResponse, p
           throw new Error('Opportunity not found.');
         }
         setOpportunity(currentOpportunity);
+        console.log("Current opportunity set:", currentOpportunity);
 
         const summaryOutput = await summarizeContractOpportunity({ opportunity: currentOpportunity });
         setBidSummary({
@@ -129,42 +170,65 @@ const transformPythonPricingResponse = (apiResponse: PythonPricingApiResponse, p
           title: currentOpportunity.title,
           id: currentOpportunity.id,
         });
+        console.log("AI Summary received:", summaryOutput);
+
 
         if (summaryOutput.requiredProductService && summaryOutput.requiredProductService.length > 0 && summaryOutput.quantity) {
-          const pricingInput: FindProductPricingInput = {
-            productList: summaryOutput.requiredProductService,
-            quantityDetails: summaryOutput.quantity,
-          };
-          console.log("Requesting pricing with input:", JSON.stringify(pricingInput, null, 2));
-          
-          const genkitPricingOutput: GenkitFindProductPricingOutput = await findProductPricing(pricingInput);
-          console.log("Received Genkit pricing info:", JSON.stringify(genkitPricingOutput, null, 2));
-          
-          // Transform Genkit's output to UiFindProductPricingOutput
-          // This assumes genkitPricingOutput.productsWithOffers structure is compatible
-          // or you might need a more detailed transformation function.
-          const uiPricingInfo: UiFindProductPricingOutput = {
-             productsWithOffers: genkitPricingOutput.productsWithOffers.map(po => ({
-                productName: po.productName,
-                identifiedQuantity: po.identifiedQuantity,
-                offers: po.offers.map(offer => ({
-                    vendorName: offer.vendorName,
-                    rate: offer.rate, // Use 'rate' which should be the unit_price
-                    websiteLink: offer.websiteLink,
-                    contactOrQuoteUrl: offer.contactOrQuoteUrl,
-                    subtotal: offer.subtotal,
-                    // Make sure all required fields for VendorOffer are mapped
-                    title: offer.title || po.productName, // Fallback for title
-                    extractedPrice: offer.extractedPrice !== undefined ? offer.extractedPrice : offer.rate, // Use extractedPrice or rate
-                    priceCurrency: offer.priceCurrency || 'USD',
-                    snippet: offer.snippet,
-                    quantityContext: offer.quantityContext
-                }))
-             })),
-             overallTotalAmount: genkitPricingOutput.overallTotalAmount
-          };
-          setPricingInfo(uiPricingInfo);
+          const productsForApi = parseProductQuantities(summaryOutput.quantity, summaryOutput.requiredProductService);
+          console.log("Products for Flask API:", JSON.stringify(productsForApi.map(p => ({name: p.name, quantity: p.quantity})), null, 2));
 
+          const flaskApiPayload = {
+            products: productsForApi.map(p => ({ name: p.name, quantity: p.quantity })),
+          };
+
+          const flaskApiResponse = await fetch("https://flask-api-f61b.onrender.com/bulk-pricing", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(flaskApiPayload),
+          });
+
+          if (!flaskApiResponse.ok) {
+            const errorData = await flaskApiResponse.text();
+            console.error("Flask API error response:", errorData);
+            throw new Error(`Failed to fetch pricing from Flask API: ${flaskApiResponse.status} - ${errorData}`);
+          }
+
+          const flaskData: FlaskApiResponse = await flaskApiResponse.json();
+          console.log("Received Flask API pricing info:", JSON.stringify(flaskData, null, 2));
+
+          // Transform Flask API data to UiFindProductPricingOutput
+          const transformedProductsWithOffers: ProductOffersGroup[] = Object.entries(flaskData).map(([productName, apiOffers]) => {
+            // Find the original identifiedQuantity string for this product
+            const productInfo = productsForApi.find(p => p.name === productName);
+            const identifiedQuantityForDisplay = productInfo ? productInfo.identifiedQuantity : "N/A";
+
+            const offers: VendorOffer[] = apiOffers.map(apiOffer => ({
+              vendorName: apiOffer.seller,
+              rate: apiOffer.unit_price,
+              websiteLink: apiOffer.url,
+              contactOrQuoteUrl: apiOffer.contact_or_quote || apiOffer.url, // Use contact_or_quote if available, else fallback to main url
+              subtotal: apiOffer.total_cost,
+              shipping: apiOffer.shipping,
+              taxes: apiOffer.taxes,
+              requestedQuantity: apiOffer.quantity,
+            }));
+            return {
+              productName,
+              identifiedQuantity: identifiedQuantityForDisplay,
+              offers,
+            };
+          });
+
+          const overallTotalAmount = transformedProductsWithOffers.reduce((sum, productGroup) => {
+            // Assuming Flask API returns offers sorted with best (cheapest total_cost) first
+            const bestOfferSubtotal = productGroup.offers.length > 0 ? productGroup.offers[0].subtotal : 0;
+            return sum + bestOfferSubtotal;
+          }, 0);
+          
+          setPricingInfo({
+            productsWithOffers: transformedProductsWithOffers,
+            overallTotalAmount,
+          });
 
         } else {
           console.log("No required products/services or quantity found in summary. Setting empty pricing info.");
@@ -174,7 +238,10 @@ const transformPythonPricingResponse = (apiResponse: PythonPricingApiResponse, p
       } catch (err: any) {
         console.error('Error fetching opportunity or pricing:', err);
         setError(err.message || 'Failed to load RFQ details.');
-        setPricingInfo({ productsWithOffers: [], overallTotalAmount: 0 });
+        if (err.message.includes("Flask API")) {
+            setPricingError(err.message);
+        }
+        setPricingInfo({ productsWithOffers: [], overallTotalAmount: 0 }); // Ensure pricingInfo is reset on error
       } finally {
         setLoading(false);
       }
@@ -184,7 +251,7 @@ const transformPythonPricingResponse = (apiResponse: PythonPricingApiResponse, p
   }, [id, isClient]);
 
   const handleProceedToBidSubmission = () => {
-     if (!id || !isClient) return;
+     if (!id || !isClient || !bidSummary) return;
     const existingBidsString = localStorage.getItem('ongoingBids');
     let existingBids: OngoingBid[] = [];
     if (existingBidsString) {
@@ -192,29 +259,45 @@ const transformPythonPricingResponse = (apiResponse: PythonPricingApiResponse, p
         existingBids = JSON.parse(existingBidsString);
       } catch (e) {
         console.error("Failed to parse existing bids from localStorage", e);
-        localStorage.removeItem('ongoingBids');
+        localStorage.removeItem('ongoingBids'); // Clear corrupted data if parsing fails
       }
     }
 
     const bidIndex = existingBids.findIndex(b => b.id === id);
     if (bidIndex !== -1) {
-      existingBids[bidIndex].status = "Bid Submitted";
+      existingBids[bidIndex].status = "Bid Submitted"; // Or "Final Quotes Selected" then "Bid Submitted"
       localStorage.setItem('ongoingBids', JSON.stringify(existingBids));
       console.log(`Bid ${id} status updated to Bid Submitted.`);
     } else {
-      console.warn(`Bid ${id} not found in ongoing bids to update status.`);
+      // This should ideally not happen if "Start Bidding Process" worked correctly
+      console.warn(`Bid ${id} not found in ongoing bids to update status. Adding it now.`);
+      if (opportunity && bidSummary) {
+          const newBid: OngoingBid = {
+            id: opportunity.id,
+            title: opportunity.title,
+            agency: opportunity.department || 'N/A',
+            status: "Bid Submitted",
+            deadline: opportunity.closingDate || 'N/A',
+            source: 'SAM.gov',
+            linkToOpportunity: `/sam-gov/${opportunity.id}`,
+          };
+          existingBids.push(newBid);
+          localStorage.setItem('ongoingBids', JSON.stringify(existingBids));
+      }
     }
     alert("Bid status updated to 'Bid Submitted'. Bid Submission page/functionality not yet implemented.");
+    // Potentially navigate to a bid submission page:
+    // router.push(`/bid-submission/${id}`);
   };
 
-  if (loading) return <Loading />;
+  if (loading && !opportunity) return <Loading />; // Show full loading screen only if opportunity is not yet fetched
 
-  if (error) {
+  if (error && !opportunity) { // Show full page error only if opportunity failed to load
     return (
       <main className="flex flex-1 flex-col items-center justify-center p-6">
         <Alert variant="destructive" className="w-full max-w-lg">
           <Terminal className="h-4 w-4" />
-          <AlertTitle>Error Loading RFQ Data</AlertTitle>
+          <AlertTitle>Error Loading Opportunity Data</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
           <Button onClick={() => router.back()} variant="secondary" className="mt-4">
             Go Back
@@ -230,7 +313,7 @@ const transformPythonPricingResponse = (apiResponse: PythonPricingApiResponse, p
 
   return (
     <main className="flex-1 p-6 bg-gradient-to-br from-background to-secondary/10 animate-fadeIn">
-      <div className="container mx-auto max-w-5xl"> {/* Increased max-width for wider table */}
+      <div className="container mx-auto max-w-5xl">
         <Button onClick={() => router.back()} variant="outline" className="mb-6 group transition-transform hover:-translate-x-1">
           <Icons.arrowRight className="mr-2 h-4 w-4 transform rotate-180 group-hover:animate-pulse" />
           Back to Bid Summary
@@ -246,7 +329,17 @@ const transformPythonPricingResponse = (apiResponse: PythonPricingApiResponse, p
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
-            {hasPricingData ? (
+            {loading && !pricingInfo && <div className="flex justify-center items-center py-10"><Icons.loader className="h-8 w-8 animate-spin text-primary" /> <p className="ml-2">Fetching pricing information...</p></div>}
+            {error && opportunity && ( // Show error related to pricing if opportunity is loaded but pricing failed
+                 <Alert variant="destructive">
+                    <Terminal className="h-4 w-4" />
+                    <AlertTitle>Pricing Error</AlertTitle>
+                    <AlertDescription>{pricingError || error}</AlertDescription>
+                </Alert>
+            )}
+
+            {!loading && pricingInfo && (
+              hasPricingData ? (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -254,14 +347,14 @@ const transformPythonPricingResponse = (apiResponse: PythonPricingApiResponse, p
                       <TableHead className="w-[20%]">Item</TableHead>
                       <TableHead className="w-[15%]">Identified Qty</TableHead>
                       <TableHead className="w-[15%]">Vendor</TableHead>
-                      <TableHead className="text-right w-[10%]">Rate</TableHead>
-                      <TableHead className="text-right w-[10%]">Subtotal</TableHead>
-                      <TableHead className="w-[15%]">Website</TableHead>
-                      <TableHead className="w-[15%]">Contact/Quote URL</TableHead>
+                      <TableHead className="text-right w-[10%]">Unit Rate</TableHead>
+                      <TableHead className="text-right w-[10%]">Total Cost</TableHead>
+                      <TableHead className="w-[15%]">Product Link</TableHead>
+                      <TableHead className="w-[15%]">Contact/Quote</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pricingInfo?.productsWithOffers.map(productOfferGroup => (
+                    {pricingInfo.productsWithOffers.map(productOfferGroup => (
                       productOfferGroup.offers.length > 0 ? (
                         productOfferGroup.offers.map((offer, offerIndex) => (
                           <TableRow key={`${productOfferGroup.productName}-${offer.vendorName || offerIndex}`} className="hover:bg-muted/50 transition-colors">
@@ -283,25 +376,25 @@ const transformPythonPricingResponse = (apiResponse: PythonPricingApiResponse, p
                               {typeof offer.subtotal === 'number' && offer.subtotal > 0 ? `$${offer.subtotal.toFixed(2)}` : 'N/A'}
                             </TableCell>
                             <TableCell>
-                              {offer.websiteLink && offer.websiteLink !== "N/A" && !offer.websiteLink.includes("Error") && !offer.websiteLink.includes("SERP_API_KEY") ? (
+                              {offer.websiteLink && offer.websiteLink !== "N/A" ? (
                                 <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:underline">
                                   <a href={offer.websiteLink.startsWith('http') ? offer.websiteLink : `http://${offer.websiteLink}`} target="_blank" rel="noopener noreferrer" className="flex items-center break-all">
                                     View Product <ExternalLink className="h-3 w-3 ml-1 shrink-0" />
                                   </a>
                                 </Button>
                               ) : (
-                                offer.websiteLink || 'N/A'
+                                'N/A'
                               )}
                             </TableCell>
                             <TableCell>
-                               {offer.contactOrQuoteUrl && offer.contactOrQuoteUrl !== "N/A" && !offer.contactOrQuoteUrl.includes("Error") && !offer.contactOrQuoteUrl.includes("SERP_API_KEY") ? (
+                               {offer.contactOrQuoteUrl && offer.contactOrQuoteUrl !== "N/A" ? (
                                 <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:underline">
                                   <a href={offer.contactOrQuoteUrl.startsWith('http') ? offer.contactOrQuoteUrl : `http://${offer.contactOrQuoteUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center break-all">
                                     Contact/Quote <ExternalLink className="h-3 w-3 ml-1 shrink-0" />
                                   </a>
                                 </Button>
                               ) : (
-                                offer.contactOrQuoteUrl || 'N/A'
+                                 'N/A'
                               )}
                             </TableCell>
                           </TableRow>
@@ -322,29 +415,31 @@ const transformPythonPricingResponse = (apiResponse: PythonPricingApiResponse, p
                 <Layers className="h-4 w-4" />
                 <AlertTitle>No Pricing Information Available</AlertTitle>
                 <AlertDescription>
-                  Could not retrieve specific pricing details for the items at this time. This might be due to the nature of the products/services, lack of available online data, or an issue with the search tool.
-                  { pricingInfo?.productsWithOffers?.some(pog => pog.identifiedQuantity === "Error in AI processing") && " There was an error processing some items."}
+                  Could not retrieve specific pricing details for the items at this time. This might be due to the nature of the products/services or lack of available online data.
                 </AlertDescription>
               </Alert>
+            ))}
+
+            { !loading && pricingInfo && (
+                 <div className="mt-6 pt-6 border-t flex flex-col sm:flex-row justify-between items-center">
+                    <div className="text-lg font-bold text-primary flex items-center mb-4 sm:mb-0">
+                        <DollarSign className="h-6 w-6 mr-2" />
+                        Total Estimated Amount (Best Offers): ${pricingInfo?.overallTotalAmount?.toFixed(2) || '0.00'}
+                    </div>
+                    <div className="flex space-x-3">
+                        <Button variant="outline" onClick={() => alert("Save RFQ functionality not implemented.")}>Save RFQ</Button>
+                        <Button onClick={handleProceedToBidSubmission}>Proceed to Bid Submission</Button>
+                    </div>
+                </div>
             )}
 
-            <div className="mt-6 pt-6 border-t flex flex-col sm:flex-row justify-between items-center">
-              <div className="text-lg font-bold text-primary flex items-center mb-4 sm:mb-0">
-                <DollarSign className="h-6 w-6 mr-2" />
-                Total Estimated Amount (Best Offers): ${pricingInfo?.overallTotalAmount?.toFixed(2) || '0.00'}
-              </div>
-              <div className="flex space-x-3">
-                <Button variant="outline" onClick={() => alert("Save RFQ functionality not implemented.")}>Save RFQ</Button>
-                <Button onClick={handleProceedToBidSubmission}>Proceed to Bid Submission</Button>
-              </div>
-            </div>
 
             <Alert variant="default" className="mt-6 bg-accent/5 text-accent-foreground border-accent/20">
               <Info className="h-4 w-4 text-accent" />
               <AlertTitle className="text-accent">Disclaimer</AlertTitle>
               <AlertDescription>
                 The pricing information provided is AI-assisted and based on automated web searches. It is for estimation purposes only. Actual prices may vary. Always verify with vendors.
-                If "N/A" or error messages appear, it indicates that information could not be reliably retrieved. The "Total Estimated Amount" is based on the cheapest offer found for each product.
+                If "N/A" appears, it indicates that information could not be reliably retrieved. The "Total Estimated Amount" is based on the cheapest offer found for each product.
               </AlertDescription>
             </Alert>
 
