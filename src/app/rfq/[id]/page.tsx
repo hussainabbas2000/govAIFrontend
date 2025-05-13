@@ -63,68 +63,93 @@ interface UiFindProductPricingOutput {
 // Helper function to parse quantities from the summary string
 const parseProductQuantities = (quantityString: string, productList: string[]): Array<{ name: string; quantity: number; identifiedQuantity: string }> => {
   const productQuantities: Array<{ name: string; quantity: number; identifiedQuantity: string }> = [];
+  const assignedProducts = new Set<string>(); // Keep track of products already assigned a quantity from the string
 
-  if (quantityString === "Not specified") {
+  if (quantityString.toLowerCase() === "not specified" || quantityString === "") {
     productList.forEach(productName => {
-      productQuantities.push({ name: productName, quantity: 1, identifiedQuantity: "1 (assumed)" });
+      productQuantities.push({ name: productName, quantity: 1, identifiedQuantity: `1 unit of ${productName} (assumed)` });
     });
     return productQuantities;
   }
 
-  // Attempt to parse combined quantity string like "500 SATA 2 HDD units, 200 2TB DDR4 RAM"
-  // This regex tries to find "<number> <units (optional)> <product name pattern>"
-  // It iterates through productList and tries to find a match for each.
-  productList.forEach(productName => {
-    let num = 1; // Default quantity
-    let identifiedQtyStr = `1 unit of ${productName} (assumed)`;
+  // Split the quantity string by common delimiters like comma or "and", handling potential spaces
+  const quantityEntries = quantityString.split(/,\s*(?![^()]*\))|\s+and\s+/i).map(e => e.trim()).filter(e => e);
 
-    // Create a regex to find the quantity for the current product.
-    // This needs to be somewhat flexible with product naming.
-    // Escape special characters in product name for regex
-    const escapedProductName = productName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    // Regex to find <number> followed by optional units, then the product name (case insensitive)
-    // It tries to capture the full phrase for identifiedQuantity as well.
-    const productRegex = new RegExp(`(\\d+)\\s*([a-zA-Z0-9\\s\\-\\.]*?${escapedProductName}[a-zA-Z0-9\\s\\-\\.]*)`, "i");
-    const match = quantityString.match(productRegex);
-
+  for (const entry of quantityEntries) {
+    // Regex to find a number, optional units, and the item description
+    // Example: "500 SATA 2 HDD", "200 units of 2TB DDR4 RAM"
+    const match = entry.match(/^(\d+)\s*(?:units\s*of\s*)?(.*)$/i);
     if (match && match[1] && match[2]) {
-      num = parseInt(match[1], 10);
-      // identifiedQtyStr = match[0].trim(); // The full matched phrase like "500 SATA 2 HDD units"
-      // More robust: construct identifiedQtyStr from parsed number and original product name from list
-      // We need to be careful not to just use match[2] as it might be too greedy or not specific enough
-      // Try to find the specific part of quantityString related to this product.
-      const parts = quantityString.split(/,|\sand\s/i);
-      const relevantPart = parts.find(p => p.toLowerCase().includes(productName.toLowerCase()));
-      identifiedQtyStr = relevantPart ? `${num} ${relevantPart.replace(new RegExp(`^\\d+\\s*`, 'i'), '').trim()}` : `${num} ${productName}`;
-      if (relevantPart && !relevantPart.toLowerCase().includes(productName.toLowerCase())) {
-        // if productName is a substring of the item in quantityString (e.g. productName "HDD", quantityString "500 SATA HDD")
-         identifiedQtyStr = `${num} ${productName}`;
-      } else if (relevantPart) {
-         // If productName is more generic than item in quantityString (e.g. productName "SATA HDD", quantityString "500 SATA 2 HDD units")
-         // We try to extract the more specific name from quantity string for display.
-         const specificNameMatch = relevantPart.match(new RegExp(`\\d+\\s*(.*${escapedProductName}.*)`, "i"));
-         if (specificNameMatch && specificNameMatch[1]) {
-            identifiedQtyStr = `${num} ${specificNameMatch[1].trim()}`;
-         } else {
-            identifiedQtyStr = `${num} ${productName}`;
-         }
+      const quantity = parseInt(match[1], 10);
+      const itemDescriptionInEntry = match[2].trim();
+
+      // Find the best matching product from productList for this itemDescriptionInEntry
+      let bestMatch: string | null = null;
+      let highestMatchScore = 0;
+
+      for (const productName of productList) {
+        if (assignedProducts.has(productName)) continue; // Skip if already assigned
+
+        const productNameLower = productName.toLowerCase();
+        const itemDescLower = itemDescriptionInEntry.toLowerCase();
+
+        let score = 0;
+        // Prioritize if product name is a significant part of the item description in the entry
+        if (itemDescLower.includes(productNameLower)) { 
+          score = productNameLower.length; 
+          // Bonus if it's a whole word match or starts with product name
+          const regexExact = new RegExp(`\\b${productNameLower}\\b`, 'i');
+          if (regexExact.test(itemDescLower)) {
+            score += productNameLower.length; // Double score for exact word match
+          }
+        }
+        
+        if (score > highestMatchScore) {
+          highestMatchScore = score;
+          bestMatch = productName;
+        }
+      }
+
+      if (bestMatch) {
+        productQuantities.push({
+          name: bestMatch,
+          quantity: quantity,
+          identifiedQuantity: entry // Use the full entry as the identified quantity string
+        });
+        assignedProducts.add(bestMatch);
       } else {
-         identifiedQtyStr = `${num} ${productName}`;
+        console.warn(`Could not map entry "${entry}" to any product in productList: ${productList.join(', ')}. Parsed description: "${itemDescriptionInEntry}"`);
       }
-
-
-    } else if (productList.length === 1 && /^\d+/.test(quantityString)) {
-      // If only one product and quantity string starts with a number
-      const singleProductMatch = quantityString.match(/^(\d+)/);
-      if (singleProductMatch && singleProductMatch[1]) {
-        num = parseInt(singleProductMatch[1], 10);
-        identifiedQtyStr = `${num} ${productName}`; // Use original product name
-      }
+    } else {
+       console.warn(`Could not parse quantity and item from entry: "${entry}"`);
     }
-    productQuantities.push({ name: productName, quantity: num, identifiedQuantity: identifiedQtyStr });
-  });
+  }
 
-  return productQuantities;
+  // Add any products from productList that were not found in quantityString with a default quantity of 1
+  productList.forEach(productName => {
+    if (!assignedProducts.has(productName)) {
+      // Special case: if productList has only one item and quantityString is just a number.
+      if (productList.length === 1 && quantityEntries.length === 1 && /^\d+$/.test(quantityEntries[0])) {
+         const qtyOnly = parseInt(quantityEntries[0], 10);
+         productQuantities.push({ name: productName, quantity: qtyOnly, identifiedQuantity: `${qtyOnly} ${productName}` });
+      } else {
+         productQuantities.push({ name: productName, quantity: 1, identifiedQuantity: `1 unit of ${productName} (assumed)` });
+      }
+      assignedProducts.add(productName); // Mark as handled
+    }
+  });
+  
+  // Filter out duplicates that might have been added by the default catch-all if parsing was imperfect
+  const finalQuantities: Array<{ name: string; quantity: number; identifiedQuantity: string }> = [];
+  const seenNames = new Set<string>();
+  for(const pq of productQuantities) {
+      if(!seenNames.has(pq.name)){
+          finalQuantities.push(pq);
+          seenNames.add(pq.name);
+      }
+  }
+
+  return finalQuantities;
 };
 
 
@@ -180,6 +205,8 @@ export default function RfqPage() {
           const flaskApiPayload = {
             products: productsForApi.map(p => ({ name: p.name, quantity: p.quantity })),
           };
+          console.log("Requesting bulk pricing with payload:", JSON.stringify(flaskApiPayload, null, 2));
+
 
           const flaskApiResponse = await fetch("https://flask-api-f61b.onrender.com/bulk-pricing", {
             method: "POST",
@@ -238,7 +265,7 @@ export default function RfqPage() {
       } catch (err: any) {
         console.error('Error fetching opportunity or pricing:', err);
         setError(err.message || 'Failed to load RFQ details.');
-        if (err.message.includes("Flask API")) {
+        if (err.message && err.message.includes("Flask API")) {
             setPricingError(err.message);
         }
         setPricingInfo({ productsWithOffers: [], overallTotalAmount: 0 }); // Ensure pricingInfo is reset on error
@@ -330,13 +357,21 @@ export default function RfqPage() {
           </CardHeader>
           <CardContent className="p-6 space-y-6">
             {loading && !pricingInfo && <div className="flex justify-center items-center py-10"><Icons.loader className="h-8 w-8 animate-spin text-primary" /> <p className="ml-2">Fetching pricing information...</p></div>}
-            {error && opportunity && ( // Show error related to pricing if opportunity is loaded but pricing failed
+            {pricingError && opportunity && ( // Show error related to pricing if opportunity is loaded but pricing failed
                  <Alert variant="destructive">
                     <Terminal className="h-4 w-4" />
                     <AlertTitle>Pricing Error</AlertTitle>
-                    <AlertDescription>{pricingError || error}</AlertDescription>
+                    <AlertDescription>{pricingError}</AlertDescription>
                 </Alert>
             )}
+             {error && !pricingError && opportunity && ( // Show other errors if not pricing specific
+                 <Alert variant="destructive">
+                    <Terminal className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
+
 
             {!loading && pricingInfo && (
               hasPricingData ? (
