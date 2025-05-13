@@ -36,10 +36,13 @@ import {
   Megaphone,
   TrendingUp,
   Calendar, // Keep Calendar from lucide
+  PackageSearch, // Added PackageSearch
+  MapPin, // Added MapPin
+  CalendarDays, // Added CalendarDays
 } from 'lucide-react';
 
 // Define SVG components directly for Search and Logo
-const SearchIcon = (props: React.SVGProps<SVGSVGElement>) => ( 
+const SearchIconComponent = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="24"
@@ -57,7 +60,7 @@ const SearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-const LogoIcon = (props: React.SVGProps<SVGSVGElement>) => (
+const LogoIconComponent = (props: React.SVGProps<SVGSVGElement>) => (
  <svg
     xmlns="http://www.w3.org/2000/svg"
     width="24"
@@ -97,7 +100,7 @@ const Icons = {
   messageSquare: MessageSquare,
   plus: Plus,
   plusCircle: PlusCircle,
-  search: SearchIcon, // Use the SVG component
+  search: SearchIconComponent, // Use the SVG component
   server: Server,
   settings: Settings,
   share: Share2,
@@ -105,7 +108,7 @@ const Icons = {
   spinner: Loader2,
   trash: Trash,
   user: User,
-  logo: LogoIcon, // Use the SVG component
+  logo: LogoIconComponent, // Use the SVG component
   briefcase: Briefcase,
   building: Building,
   fileText: FileText,
@@ -114,6 +117,9 @@ const Icons = {
   megaphone: Megaphone,
   trendingUp: TrendingUp,
   calendar: Calendar, // Keep Calendar from lucide
+  packageSearch: PackageSearch, // Added PackageSearch
+  mapPin: MapPin, // Added MapPin
+  calendarDays: CalendarDays, // Added CalendarDays
 };
 
 export { Icons };

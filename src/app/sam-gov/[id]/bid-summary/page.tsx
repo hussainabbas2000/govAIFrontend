@@ -11,8 +11,9 @@ import { Icons } from '@/components/icons';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, List, FileText, Edit, AlertCircle, ShoppingCart } from 'lucide-react';
+import { Terminal, List, FileText, Edit, AlertCircle, ShoppingCart, CalendarDays } from 'lucide-react';
 import type { OngoingBid } from '@/app/page';
+import { format, parseISO } from 'date-fns';
 
 interface BidSummary extends SummarizeContractOpportunityOutput {
   title: string;
@@ -104,8 +105,12 @@ export default function BidSummaryPage() {
       const bidIndex = existingBids.findIndex(b => b.id === summary.id);
 
       if (bidIndex !== -1) {
+        // Update status if it's not already "Drafting" or a later stage that implies drafting is done.
+        // For simplicity, if it exists, we assume it's being worked on.
+        // If specific state progression is needed, add more checks here.
+        // For now, just ensuring it's marked as "Drafting" if the user re-initiates.
         if (existingBids[bidIndex].status !== "Drafting") {
-            existingBids[bidIndex].status = "Drafting";
+             existingBids[bidIndex].status = "Drafting";
         }
         console.log(`Bid ${summary.id} already exists, status confirmed/updated to Drafting.`);
       } else {
@@ -113,9 +118,9 @@ export default function BidSummaryPage() {
           id: summary.id,
           title: summary.title,
           agency: summary.agency,
-          status: "Drafting",
+          status: "Drafting", // Initial state when bidding process starts
           deadline: summary.originalClosingDate || 'N/A',
-          source: 'SAM.gov',
+          source: 'SAM.gov', // Assuming this page is for SAM.gov items
           linkToOpportunity: summary.originalOpportunityLink || `/sam-gov/${summary.id}`,
         };
         existingBids.push(newBid);
@@ -124,10 +129,13 @@ export default function BidSummaryPage() {
 
       localStorage.setItem('ongoingBids', JSON.stringify(existingBids));
       console.log("Bidding process started for:", summary.id);
+      // Optionally, provide feedback to the user (e.g., toast notification)
+      // Example: toast({ title: "Bidding Process Started", description: `Bid for "${summary.title}" is now in Drafting.` });
 
     } catch (e: any) {
       console.error("Error processing bid start:", e);
       setSubmissionError(e.message || "Failed to update bid status.");
+       // Example: toast({ variant: "destructive", title: "Error", description: e.message || "Failed to update bid status." });
     } finally {
       setIsSubmitting(false);
     }
@@ -150,10 +158,12 @@ export default function BidSummaryPage() {
 
     const bidIndex = existingBids.findIndex(b => b.id === summary.id);
     if (bidIndex !== -1) {
-      existingBids[bidIndex].status = "RFQs Sent";
+      existingBids[bidIndex].status = "RFQs Sent"; // Update status
       localStorage.setItem('ongoingBids', JSON.stringify(existingBids));
       console.log(`Bid ${summary.id} status updated to RFQs Sent.`);
     } else {
+      // This case should ideally be handled by handleStartBiddingProcess,
+      // but as a fallback, ensure the bid is added if somehow missed.
       console.warn(`Bid ${summary.id} not found in ongoing bids to update for RFQ. Adding it now.`);
        const newBid: OngoingBid = {
         id: summary.id,
@@ -176,7 +186,7 @@ export default function BidSummaryPage() {
     return <Loading />;
   }
 
-  if (error && !isSubmitting) {
+  if (error && !isSubmitting) { // Don't show main error if submitting error occurs
     return (
       <main className="flex flex-1 flex-col items-center justify-center p-6">
         <Alert variant="destructive" className="w-full max-w-lg">
@@ -191,7 +201,7 @@ export default function BidSummaryPage() {
     );
   }
 
-  if (!summary && !loading && !error) {
+  if (!summary && !loading && !error) { // Handle case where summary is null but no error/loading
     return (
       <main className="flex flex-1 items-center justify-center p-6">
         <p>Bid summary could not be loaded.</p>
@@ -201,6 +211,10 @@ export default function BidSummaryPage() {
       </main>
     );
   }
+  
+  const formattedDeadline = summary?.deadline 
+    ? format(parseISO(summary.deadline), 'MM/dd/yyyy - HH:mm') 
+    : <Skeleton className="inline-block h-5 w-2/5" />;
 
 
   return (
@@ -247,37 +261,43 @@ export default function BidSummaryPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col space-y-1 p-4 border rounded-md bg-background shadow-sm transition-shadow hover:shadow-md">
-                <Label className="text-sm font-medium text-muted-foreground">Estimated Quantities</Label>
-                {summary ? (
-                    Object.keys(summary.quantities || {}).length > 0 ? (
-                        Object.entries(summary.quantities).map(([product, quantity]) => (
-                            <p key={product} className="text-base font-medium text-foreground">
-                                {product}: {quantity}
-                            </p>
-                        ))
-                    ) : (
-                        <p className="text-base font-medium text-foreground italic">None specified</p>
-                    )
-                ) : (
-                   <Skeleton className="h-12 w-full" />
-                )}
+                  <Label className="text-sm font-medium text-muted-foreground flex items-center">
+                    <Icons.packageSearch className="h-4 w-4 mr-2 text-primary" /> Estimated Quantities
+                  </Label>
+                  {summary ? (
+                      Object.keys(summary.quantities || {}).length > 0 ? (
+                          Object.entries(summary.quantities).map(([product, quantity]) => (
+                              <p key={product} className="text-base font-medium text-foreground">
+                                  {product}: {quantity}
+                              </p>
+                          ))
+                      ) : (
+                          <p className="text-base font-medium text-foreground italic">None specified</p>
+                      )
+                  ) : (
+                    <span className="text-base font-medium text-foreground">
+                      <Skeleton className="h-12 w-full" />
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex flex-col space-y-1 p-4 border rounded-md bg-background shadow-sm transition-shadow hover:shadow-md">
-                <Label className="text-sm font-medium text-muted-foreground">Deadline</Label>
-                {summary ? (
-                    <p className="text-base font-medium text-foreground">{summary.deadline}</p>
-                ) : (
-                    <Skeleton className="h-6 w-1/2" />
-                )}
+                  <Label className="text-sm font-medium text-muted-foreground flex items-center">
+                    <CalendarDays className="h-4 w-4 mr-2 text-primary" /> Deadline
+                  </Label>
+                  <p className="text-base font-medium text-foreground">{formattedDeadline}</p>
                 </div>
 
                 <div className="flex flex-col space-y-1 p-4 border rounded-md bg-background shadow-sm transition-shadow hover:shadow-md">
-                <Label className="text-sm font-medium text-muted-foreground">Location</Label>
+                <Label className="text-sm font-medium text-muted-foreground flex items-center">
+                  <Icons.mapPin className="h-4 w-4 mr-2 text-primary" /> Location
+                </Label>
                 {summary ? (
                     <p className="text-base font-medium text-foreground">{summary.location}</p>
                 ) : (
+                  <span className="text-base font-medium text-foreground">
                     <Skeleton className="h-6 w-3/4" />
+                  </span>
                 )}
                 </div>
             </div>
@@ -293,9 +313,12 @@ export default function BidSummaryPage() {
             <div className="mt-8 pt-6 border-t flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
               <Button variant="outline" onClick={handleStartBiddingProcess} disabled={isSubmitting || !summary}>
                 {isSubmitting && !submissionError ? <Icons.loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {existingBidIsDrafting() ? "Update Bid Draft" : "Start Bidding Process"}
+                {/* Check if bid already exists and is in "Drafting" */}
+                {isClient && summary && localStorage.getItem('ongoingBids') && JSON.parse(localStorage.getItem('ongoingBids')!).find((b: OngoingBid) => b.id === summary.id && b.status === "Drafting") 
+                  ? "Update Bid Draft" 
+                  : "Start Bidding Process"}
               </Button>
-              <Button onClick={handleProceedToQuoteRequest} disabled={isSubmitting || !summary} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Button onClick={handleProceedToQuoteRequest} disabled={!summary} className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 Proceed to Quote Request
               </Button>
@@ -323,17 +346,4 @@ export default function BidSummaryPage() {
       `}</style>
     </main>
   );
-
-  function existingBidIsDrafting() {
-    if (!summary || !isClient) return false;
-    const existingBidsString = localStorage.getItem('ongoingBids');
-    if (!existingBidsString) return false;
-    try {
-      const existingBids: OngoingBid[] = JSON.parse(existingBidsString);
-      const bid = existingBids.find(b => b.id === summary.id);
-      return bid?.status === "Drafting";
-    } catch (e) {
-      return false;
-    }
-  }
 }
