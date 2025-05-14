@@ -197,7 +197,7 @@ const dummySamGovOpportunities: SamGovOpportunity[] = [
    {
      id: "DUMMY011",
      title: "IT Hardware Procurement - Bulk Order",
-     ncode: "334111",
+     ncode: "334111", // Example NAICS code
      location: { city: { name: "Austin" }, state: { name: "TX" }, zip: "78701" },
      closingDate: "2024-11-01T16:00:00Z",
      department: "Department of Education",
@@ -206,7 +206,7 @@ const dummySamGovOpportunities: SamGovOpportunity[] = [
      type: "Solicitation",
      link: "https://sam.gov/opp/DUMMY011",
      officeAddress: "Washington, DC 20202, USA",
-     description: "Bulk procurement of IT hardware components for data center upgrade. Required items include: 500 SATA 2 HDD units, 200 sticks of 2TB DDR4 RAM, and 300 Intel i9-9700K Processors. Delivery to Austin, TX data center."
+     description: "Bulk procurement of IT hardware components for data center upgrade. Required items include: 500 SATA 2 HDD units, 200 2TB DDR4 RAM, and 300 Intel i9-9700K Processors. Delivery to Austin, TX data center."
    },
 ];
 // --- Dummy Data End ---
@@ -272,20 +272,20 @@ export async function getSamGovOpportunities(
   const baseUrl = 'https://api.sam.gov/opportunities/v2/search';
   const defaultParams: Record<string, any> = {
     api_key: apiKey,
-    ptype: 'o,k,p',
+    ptype: 'o,k,p', // Solicitations, Combined Synopsis/Solicitations, Presolicitations
     postedFrom: getOneYearBackDate(),
     postedTo: getCurrentDate(),
-    limit: '1000'
+    limit: '1000' // Max limit per page
   };
 
   let allOpportunitiesData: any[] = [];
   let offset = 0;
-  const limit = 1000;
+  const limit = 1000; // Consistent with defaultParams.limit
   let hasMore = true;
   let pagesFetched = 0;
-  const maxPages = 10;
+  const maxPages = 2; // Reduced from 10 to be less aggressive
 
-  console.log("Fetching all SAM.gov opportunities pages...");
+  console.log(`Fetching SAM.gov opportunities (max ${maxPages} pages)...`);
 
   while (hasMore && pagesFetched < maxPages) {
     const params = { ...defaultParams, offset: String(offset) };
@@ -305,14 +305,19 @@ export async function getSamGovOpportunities(
              samGovCache = { data: dummySamGovOpportunities, lastFetched: currentTime };
              return applyFilters(dummySamGovOpportunities, searchCriteria);
         }
-        hasMore = false;
-        break;
+        hasMore = false; // Stop fetching more pages if an error occurs after the first page
+        break; // Exit the loop
       }
 
       const data = await response.json();
 
       if (!data.opportunitiesData || !Array.isArray(data.opportunitiesData)) {
         console.error(`Invalid data format from SAM.gov API on page ${pagesFetched}.`);
+        if (pagesFetched <= 1 && allOpportunitiesData.length === 0) {
+          console.warn("Falling back to dummy data due to invalid data format on first page.");
+          samGovCache = { data: dummySamGovOpportunities, lastFetched: currentTime };
+          return applyFilters(dummySamGovOpportunities, searchCriteria);
+        }
         hasMore = false;
         break;
       }
@@ -327,21 +332,22 @@ export async function getSamGovOpportunities(
 
     } catch (error: any) {
       console.error(`Error fetching data from SAM.gov API on page ${pagesFetched}:`, error);
-       if (pagesFetched <= 1 && allOpportunitiesData.length === 0) {
+       if (pagesFetched <= 1 && allOpportunitiesData.length === 0) { // Also fallback on network errors for the first page
             console.warn("Falling back to dummy data due to network error on first page.");
             samGovCache = { data: dummySamGovOpportunities, lastFetched: currentTime };
             return applyFilters(dummySamGovOpportunities, searchCriteria);
        }
-      hasMore = false;
-      break;
+      hasMore = false; // Stop fetching more pages
+      break; // Exit the loop
     }
   }
   
-  if (allOpportunitiesData.length === 0) {
-    console.warn("API did not return any opportunities, or all fetches failed. Falling back to dummy data for this cycle.");
+  if (allOpportunitiesData.length === 0 && pagesFetched > 0) { // If we fetched pages but got no data (e.g., API returned empty arrays)
+    console.warn("API returned no opportunities after fetching. Falling back to dummy data for this cycle.");
     samGovCache = { data: dummySamGovOpportunities, lastFetched: currentTime };
     return applyFilters(dummySamGovOpportunities, searchCriteria);
   }
+  // If pagesFetched is 0 (e.g. initial API key check failed or some other pre-loop issue), this won't be hit.
 
   console.log(`Fetched a total of ${allOpportunitiesData.length} opportunities from API over ${pagesFetched} page(s).`);
 
@@ -375,6 +381,7 @@ export async function getSamGovOpportunities(
     const subtier = parentPath[1]?.trim() || 'N/A';
     const office = parentPath.length > 2 ? parentPath.slice(2).join('. ').trim() : (parentPath.pop()?.trim() || 'N/A');
 
+    // Directly use the description field from the API. It could be text or a URL.
     const descriptionText = apiOpp.description || 'No description available.';
 
     return {
@@ -389,7 +396,7 @@ export async function getSamGovOpportunities(
       type: apiOpp.type || 'N/A',
       link: apiOpp.uiLink || '#',
       officeAddress: officeAddressString,
-      description: descriptionText, // Store raw description (text or URL)
+      description: descriptionText,
     };
   });
 
@@ -413,13 +420,13 @@ function applyFilters(
   return opportunities.filter(opportunity => {
     const searchLower = searchQuery?.toLowerCase() || '';
     // Use opportunity.description directly
-    const descriptionText = opportunity.description || '';
+    const descriptionText = opportunity.description || ''; // This is the raw description (text or URL)
     const matchesSearch = !searchQuery || (
       opportunity.title?.toLowerCase().includes(searchLower) ||
       opportunity.department?.toLowerCase().includes(searchLower) ||
       opportunity.subtier?.toLowerCase().includes(searchLower) ||
       opportunity.office?.toLowerCase().includes(searchLower) ||
-      descriptionText.toLowerCase().includes(searchLower) // Search in description text
+      descriptionText.toLowerCase().includes(searchLower) // Search in raw description
     );
 
     const ncodeLower = ncode?.toLowerCase();
@@ -442,6 +449,7 @@ function applyFilters(
     const matchesDate = !selectedDate || (closingDate && closingDate >= selectedDate);
 
     const today = new Date();
+    today.setHours(0,0,0,0); // Normalize today's date for comparison
     const isOpen = closingDate && closingDate >= today;
     const matchesOpen = !showOnlyOpen || isOpen;
 
