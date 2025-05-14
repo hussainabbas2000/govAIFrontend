@@ -1,3 +1,4 @@
+
 import type { map } from "zod";
 
 /**
@@ -221,6 +222,24 @@ interface SamGovCache {
 let samGovCache: SamGovCache | null = null;
 const CACHE_DURATION_MS = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
 
+function getCurrentDate(): string {
+    const today = new Date();
+    const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const dd = String(today.getDate()).padStart(2, '0');
+    const yyyy = today.getFullYear();
+    return `${mm}/${dd}/${yyyy}`;
+}
+
+function getOneYearBackDate(): string {
+    const today = new Date();
+    const pastDate = new Date(today);
+    pastDate.setDate(today.getDate() - 364); // Go back 364 days (almost a year)
+
+    const mm = String(pastDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(pastDate.getDate()).padStart(2, '0');
+    const yyyy = pastDate.getFullYear();
+    return `${mm}/${dd}/${yyyy}`;
+}
 
 /**
  * Asynchronously retrieves government contract opportunities from SAM.gov.
@@ -238,39 +257,14 @@ export async function getSamGovOpportunities(
   // Check cache first
   if (samGovCache && (currentTime - samGovCache.lastFetched < CACHE_DURATION_MS)) {
     console.log("Serving SAM.gov opportunities from cache.");
-    // Apply filters to cached data
     return applyFilters(samGovCache.data, samGovCache.descriptions, searchCriteria);
   }
 
-  console.log("Fetching SAM.gov opportunities (using dummy data).");
-
-  // --- Dummy Data Usage ---
-  console.log("Using dummy data for SAM.gov opportunities.");
-  // Descriptions are already included in dummy data
-  const dummyDescriptions: Record<string, string> = {};
-  dummySamGovOpportunities.forEach(opp => {
-    dummyDescriptions[opp.id] = opp.description || "No description available.";
-  });
-
-  // Update cache with dummy data
-  samGovCache = {
-    data: dummySamGovOpportunities,
-    descriptions: dummyDescriptions,
-    lastFetched: currentTime,
-  };
-
-  // Apply filters to the dummy data
-  return applyFilters(dummySamGovOpportunities, dummyDescriptions, searchCriteria);
-
-  // --- Original API Fetching Logic (Commented Out) ---
-  /*
-  console.log("Fetching SAM.gov opportunities from API.");
-  const apiKey = process.env.SAM_GOV_API_KEY ?? process.env.NEXT_PUBLIC_SAM_GOV_API_KEY; // Check both standard and public env var
+  console.log("Fetching SAM.gov opportunities from API or fallback to dummy data.");
+  const apiKey = process.env.SAM_GOV_API_KEY ?? process.env.NEXT_PUBLIC_SAM_GOV_API_KEY;
 
   if (!apiKey) {
-    console.error('SAM_GOV_API_KEY or NEXT_PUBLIC_SAM_GOV_API_KEY is not set in environment variables.');
-    // Fallback to dummy data if API key is missing
-    console.warn("Falling back to dummy data due to missing API key.");
+    console.warn('SAM_GOV_API_KEY or NEXT_PUBLIC_SAM_GOV_API_KEY is not set. Falling back to dummy data.');
     const dummyDescriptions: Record<string, string> = {};
     dummySamGovOpportunities.forEach(opp => {
         dummyDescriptions[opp.id] = opp.description || "No description available.";
@@ -281,7 +275,6 @@ export async function getSamGovOpportunities(
       lastFetched: currentTime,
     };
     return applyFilters(dummySamGovOpportunities, dummyDescriptions, searchCriteria);
-    // return []; // Or return empty array
   }
 
 
@@ -291,12 +284,12 @@ export async function getSamGovOpportunities(
     ptype: 'o,k,p', // Solicitation, Combined Synopsis/Solicitation, Presolicitation
     postedFrom: getOneYearBackDate(),
     postedTo: getCurrentDate(),
-    limit: '1000' // Fetch max per page initially
+    limit: '1000'
   };
 
   let allOpportunitiesData: any[] = [];
   let offset = 0;
-  const limit = 1000; // Max limit per API documentation
+  const limit = 1000;
   let hasMore = true;
 
   console.log("Fetching all SAM.gov opportunities pages...");
@@ -309,33 +302,28 @@ export async function getSamGovOpportunities(
     console.log(`Fetching page with offset: ${offset}`);
 
     try {
-      // Use { cache: 'no-store' } to bypass Next.js fetch cache if needed
-      // Consider server-side caching instead if making frequent identical calls
-      const response = await fetch(url);
+      const response = await fetch(url); // { cache: 'no-store' } if needed
       if (!response.ok) {
         const errorBody = await response.text();
         console.error(`SAM.gov API error: ${response.status} ${response.statusText}`, errorBody);
-        // Fallback to dummy data on API error
         console.warn("Falling back to dummy data due to API error.");
-         const dummyDescriptions: Record<string, string> = {};
-         dummySamGovOpportunities.forEach(opp => {
-             dummyDescriptions[opp.id] = opp.description || "No description available.";
-         });
-          samGovCache = {
-           data: dummySamGovOpportunities,
-           descriptions: dummyDescriptions,
-           lastFetched: currentTime,
-         };
-         return applyFilters(dummySamGovOpportunities, dummyDescriptions, searchCriteria);
-        // hasMore = false; // Stop fetching
-        // break;
+        const dummyDescriptions: Record<string, string> = {};
+        dummySamGovOpportunities.forEach(opp => {
+            dummyDescriptions[opp.id] = opp.description || "No description available.";
+        });
+        samGovCache = {
+          data: dummySamGovOpportunities,
+          descriptions: dummyDescriptions,
+          lastFetched: currentTime, // Still update lastFetched to prevent immediate retry
+        };
+        return applyFilters(dummySamGovOpportunities, dummyDescriptions, searchCriteria);
       }
 
       const data = await response.json();
 
       if (!data.opportunitiesData || !Array.isArray(data.opportunitiesData)) {
         console.error('Invalid data format from SAM.gov API.');
-        hasMore = false;
+        hasMore = false; // Stop fetching if data format is wrong
         break;
       }
 
@@ -346,7 +334,7 @@ export async function getSamGovOpportunities(
       } else {
         offset += limit;
       }
-      // Safety break after fetching a large number of pages (e.g., 10)
+      // Safety break after fetching a large number of pages (e.g., 10 pages = 10000 records)
       if (offset >= 10000) {
         console.warn("Reached maximum fetch limit (10 pages). Stopping.");
         hasMore = false;
@@ -354,8 +342,7 @@ export async function getSamGovOpportunities(
 
     } catch (error: any) {
       console.error('Error fetching data from SAM.gov API:', error);
-       // Fallback to dummy data on network error
-       console.warn("Falling back to dummy data due to network error.");
+      console.warn("Falling back to dummy data due to network error.");
        const dummyDescriptions: Record<string, string> = {};
        dummySamGovOpportunities.forEach(opp => {
            dummyDescriptions[opp.id] = opp.description || "No description available.";
@@ -363,71 +350,101 @@ export async function getSamGovOpportunities(
         samGovCache = {
          data: dummySamGovOpportunities,
          descriptions: dummyDescriptions,
-         lastFetched: currentTime,
+         lastFetched: currentTime,  // Still update lastFetched
        };
        return applyFilters(dummySamGovOpportunities, dummyDescriptions, searchCriteria);
-      // hasMore = false; // Stop fetching
-      // break;
     }
   }
+  
+  if (allOpportunitiesData.length === 0 && hasMore === false) { // If API returned nothing or failed completely after retries
+    console.warn("API did not return any opportunities, or all fetches failed. Falling back to dummy data for this cycle.");
+    const dummyDescriptions: Record<string, string> = {};
+    dummySamGovOpportunities.forEach(opp => {
+        dummyDescriptions[opp.id] = opp.description || "No description available.";
+    });
+    samGovCache = {
+      data: dummySamGovOpportunities,
+      descriptions: dummyDescriptions,
+      lastFetched: currentTime, // Update timestamp to prevent immediate re-fetch
+    };
+    return applyFilters(dummySamGovOpportunities, dummyDescriptions, searchCriteria);
+  }
 
-  console.log(`Fetched a total of ${allOpportunitiesData.length} opportunities.`);
 
-  // Map initial data (description might be a link)
-  let mappedOpportunities: SamGovOpportunity[] = allOpportunitiesData.map((opportunity: any) => {
+  console.log(`Fetched a total of ${allOpportunitiesData.length} opportunities from API.`);
+
+  // Map initial data
+  let mappedOpportunities: SamGovOpportunity[] = allOpportunitiesData.map((apiOpp: any) => {
     let ncodeString = '';
-    if (Array.isArray(opportunity.naicsCode)) {
-      ncodeString = opportunity.naicsCode.join(',');
-    } else if (typeof opportunity.naicsCode === 'string') {
-      ncodeString = opportunity.naicsCode;
+    if (Array.isArray(apiOpp.naicsCode)) {
+      ncodeString = apiOpp.naicsCode.join(',');
+    } else if (typeof apiOpp.naicsCode === 'string') {
+      ncodeString = apiOpp.naicsCode;
     }
     ncodeString = ncodeString.toLowerCase().replace(/\s+/g, '');
 
-    const officeAddr = opportunity.officeAddress;
+    const officeAddr = apiOpp.officeAddress;
     const officeAddressString = officeAddr ?
       `${officeAddr.city || ''}${officeAddr.city && officeAddr.state ? ', ' : ''}${officeAddr.state || ''}${officeAddr.zipcode ? ' ' + officeAddr.zipcode : ''}${officeAddr.countryCode ? ', ' + officeAddr.countryCode : ''}`.trim()
       : 'N/A';
+    
+    const pop = apiOpp.placeOfPerformance;
+    let locationObject: SamGovOpportunity['location'] = null;
+    if (pop) {
+        locationObject = {
+            city: pop.city ? { name: pop.city.name, code: pop.city.code } : undefined,
+            state: pop.state ? { name: pop.state.name, code: pop.state.code } : undefined,
+            country: pop.country ? { name: pop.country.name, code: pop.country.code } : undefined,
+            zip: pop.zipCode || undefined, // API uses zipCode
+        };
+    }
+
+    const parentPath = apiOpp.fullParentPathName?.split('.') || [];
 
     return {
-      id: opportunity.noticeId,
-      title: opportunity.title || 'N/A',
+      id: apiOpp.noticeId,
+      title: apiOpp.title || 'N/A',
       ncode: ncodeString || 'N/A',
-      department: opportunity.fullParentPathName?.split('.')[0] || 'N/A',
-      subtier: opportunity.fullParentPathName?.split('.')[1] || 'N/A',
-      office: opportunity.fullParentPathName?.split('.').pop() || 'N/A',
-      location: opportunity.placeOfPerformance || null,
-      closingDate: opportunity.responseDeadLine, // API uses responseDeadLine
-      type: opportunity.type || 'N/A',
-      link: opportunity.uiLink || '#',
+      department: parentPath[0] || 'N/A',
+      subtier: parentPath[1] || 'N/A',
+      office: parentPath.pop() || 'N/A',
+      location: locationObject,
+      closingDate: apiOpp.responseDeadLine,
+      type: apiOpp.type || 'N/A',
+      link: apiOpp.uiLink || '#',
       officeAddress: officeAddressString,
-      description: opportunity.description // This might be a URL
+      description: apiOpp.description // This might be a URL or summary text
     };
   });
 
-  // Fetch actual descriptions concurrently for opportunities where description is a URL
-  console.log(`Fetching descriptions for opportunities with description links...`);
+  // Fetch actual descriptions concurrently
+  console.log(`Fetching descriptions for opportunities where description might be a link...`);
   const descriptionPromises = mappedOpportunities.map(async (opp) => {
-    // Check if description is a string and looks like a URL
     if (typeof opp.description === 'string' && opp.description.startsWith('http')) {
       try {
-        // Use { cache: 'no-store' } if descriptions change frequently
-        const descResponse = await fetch(`${opp.description}&api_key=${apiKey}`);
+        // This assumes the URL in opp.description is an API endpoint that might require an API key.
+        // If it's just a public HTML page, this fetch will get HTML, not JSON.
+        // The SAM.gov API for *details* of a notice might be different.
+        // For now, let's assume it's a direct API link for description content.
+        // A more robust solution would be to use the noticeId to fetch from a specific "details" endpoint if available.
+        const descResponse = await fetch(`${opp.description}${opp.description.includes('?') ? '&' : '?'}api_key=${apiKey}`);
         if (descResponse.ok) {
-          const descData = await descResponse.json();
-          // Extract the actual description text - adjust path based on the API response structure
-          // Common structures might be descData.description or nested like descData.opportunity.description
-          const actualDesc = descData?.description || descData?.opportunity?.description || 'Full description not found in response.';
-          return { id: opp.id, description: actualDesc };
+          const descData = await descResponse.json(); 
+          // Adjust based on actual structure of description API response
+          return { id: opp.id, description: descData.description || descData.text || 'Full description not found in response.' };
         } else {
-          console.warn(`Failed to fetch description for ${opp.id} (${descResponse.status})`);
-          return { id: opp.id, description: 'Failed to load description.' }; // Keep original link on failure? Or set error message?
+          console.warn(`Failed to fetch description for ${opp.id} (${descResponse.status}). Using summary or link.`);
+          // Fallback to summary if detailed fetch fails
+          const summaryDesc = allOpportunitiesData.find(d => d.noticeId === opp.id)?.description || 'Failed to load description.';
+          return { id: opp.id, description: summaryDesc };
         }
       } catch (descError) {
         console.error(`Error fetching description for ${opp.id}:`, descError);
-        return { id: opp.id, description: 'Error loading description.' };
+        const summaryDesc = allOpportunitiesData.find(d => d.noticeId === opp.id)?.description || 'Error loading description.';
+        return { id: opp.id, description: summaryDesc };
       }
     }
-    // If description is not a link or already fetched/exists, keep it as is
+    // If description is not a link or already seems like full text.
     return { id: opp.id, description: opp.description || 'No description provided.' };
   });
 
@@ -438,17 +455,14 @@ export async function getSamGovOpportunities(
   });
   console.log("Finished fetching descriptions.");
 
-  // Update cache with fetched data and descriptions
   samGovCache = {
     data: mappedOpportunities,
     descriptions: descriptionsMap,
     lastFetched: currentTime,
   };
-  console.log(`SAM.gov cache updated. ${mappedOpportunities.length} opportunities and descriptions stored.`);
+  console.log(`SAM.gov cache updated with live API data. ${mappedOpportunities.length} opportunities stored.`);
 
-  // Apply filters before returning
   return applyFilters(mappedOpportunities, descriptionsMap, searchCriteria);
-  */
 }
 
 
@@ -461,70 +475,41 @@ function applyFilters(
   const { ncode, location, dateFilter, showOnlyOpen, searchQuery } = searchCriteria;
 
   return opportunities.filter(opportunity => {
-    // Search query filter (searches title, department, subtier, office, and description)
     const searchLower = searchQuery?.toLowerCase() || '';
-    const descriptionText = descriptions[opportunity.id] || '';
+    const descriptionText = descriptions[opportunity.id] || opportunity.description || ''; // Use cached/fetched description
     const matchesSearch = !searchQuery || (
       opportunity.title?.toLowerCase().includes(searchLower) ||
       opportunity.department?.toLowerCase().includes(searchLower) ||
       opportunity.subtier?.toLowerCase().includes(searchLower) ||
       opportunity.office?.toLowerCase().includes(searchLower) ||
-      descriptionText.toLowerCase().includes(searchLower) // Search description
+      descriptionText.toLowerCase().includes(searchLower)
     );
 
-    // NAICS code filter
     const ncodeLower = ncode?.toLowerCase();
     const matchesNaics = !ncodeLower || opportunity.ncode?.toLowerCase().includes(ncodeLower);
 
-    // Location filter (searches city, state, country, zip, and office address)
     const locationLower = location?.toLowerCase();
-    const matchesLocation = !locationLower ||
-      [
+    const locationString = [
         opportunity.location?.city?.name,
         opportunity.location?.state?.name,
         opportunity.location?.country?.name,
         opportunity.location?.zip,
-        opportunity.officeAddress, // Include office address in location search
-      ]
-        .filter(Boolean) // Remove null/undefined values
-        .some(field => field?.toLowerCase().includes(locationLower));
+        opportunity.officeAddress,
+      ].filter(Boolean).join(', ').toLowerCase();
+    const matchesLocation = !locationLower || locationString.includes(locationLower);
+    
 
-    // Date filter (Closing date >= selected date)
     const selectedDate = dateFilter ? new Date(dateFilter) : undefined;
-    if (selectedDate) selectedDate.setHours(0, 0, 0, 0); // Normalize date for comparison
+    if (selectedDate) selectedDate.setHours(0, 0, 0, 0); 
     const closingDate = opportunity.closingDate ? new Date(opportunity.closingDate) : undefined;
-    if (closingDate) closingDate.setHours(0, 0, 0, 0); // Normalize closing date
+    // No time normalization for closingDate, as API provides exact time.
     const matchesDate = !selectedDate || (closingDate && closingDate >= selectedDate);
 
-    // Open listings filter (Closing date >= today)
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize today's date
-    const isOpen = closingDate && closingDate >= today;
+    const isOpen = closingDate && closingDate >= today; // Compare with current time
     const matchesOpen = !showOnlyOpen || isOpen;
 
 
     return matchesSearch && matchesNaics && matchesLocation && matchesDate && matchesOpen;
   });
 }
-
-
-// --- Helper Functions (Used by API logic, commented out but kept for reference) ---
-
-// function getCurrentDate(): string {
-//     const today = new Date();
-//     const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-//     const dd = String(today.getDate()).padStart(2, '0');
-//     const yyyy = today.getFullYear();
-//     return `${mm}/${dd}/${yyyy}`;
-// }
-
-// function getOneYearBackDate(): string {
-//     const today = new Date();
-//     const pastDate = new Date(today);
-//     pastDate.setDate(today.getDate() - 364); // Go back 364 days (almost a year)
-
-//     const mm = String(pastDate.getMonth() + 1).padStart(2, '0');
-//     const dd = String(pastDate.getDate()).padStart(2, '0');
-//     const yyyy = pastDate.getFullYear();
-//     return `${mm}/${dd}/${yyyy}`;
-// }
