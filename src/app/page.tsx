@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -11,40 +12,41 @@ import {
   SidebarProvider,
 } from '@/components/ui/sidebar';
 import { Icons } from '@/components/icons';
-import { useRouter, usePathname } from 'next/navigation'; // Import usePathname
+import { useRouter, usePathname } from 'next/navigation'; 
 import { useEffect, useState } from 'react';
-import { TotalListingsLabel } from '@/components/total-listings-label'; // Correct import path
+import { TotalListingsLabel } from '@/components/total-listings-label'; 
+import type { SamGovOpportunity } from '@/types/sam-gov'; // Updated import
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe, DollarSign, Percent, Send, Trophy, Layers, CheckCircle, BellRing, Clock, FileCheck, SearchCode, CreditCard, CircleDollarSign, Lightbulb, Mail, UserCog, CircleDot, SendHorizonal, Check, PackageCheck, Handshake, ListChecks, FileClock } from 'lucide-react'; // Added UserCog for Preferences and bid state icons
+import { Briefcase, Building, FileText, LifeBuoy, Link as LinkIcon, Megaphone, Settings, TrendingUp, FilePlus, Database, Receipt, BookTemplate, Globe, DollarSign, Percent, Send, Trophy, Layers, CheckCircle, BellRing, Clock, FileCheck, SearchCode, CreditCard, CircleDollarSign, Lightbulb, Mail, UserCog, CircleDot, SendHorizonal, Check, PackageCheck, Handshake, ListChecks, FileClock } from 'lucide-react'; 
 import { BidsByCategoryChart } from '@/components/dashboard/bids-by-category-chart';
-import { BidsByPortalChart } from '@/components/dashboard/bids-by-portal-chart'; // Import the new chart component
-import { useToast } from '@/hooks/use-toast'; // Import useToast
-import { Badge } from "@/components/ui/badge"; // Import Badge component
-import { cn } from '@/lib/utils'; // Import cn utility function
+import { BidsByPortalChart } from '@/components/dashboard/bids-by-portal-chart'; 
+import { useToast } from '@/hooks/use-toast'; 
+import { Badge } from "@/components/ui/badge"; 
+import { cn } from '@/lib/utils'; 
 
 // Define bid states type
 export type BidStatus = "Drafting" | "RFQs Sent" | "Quotes Received" | "Final Quotes Selected" | "Bid Submitted" | "Bid Approved" | "Bid Completed" | "Clarification";
 
 // Define structure for ongoing bids
 export interface OngoingBid {
-  id: string; // Unique ID, can be the opportunity ID
+  id: string; 
   title: string;
   agency: string;
   status: BidStatus;
-  deadline: string; // Should be a date string, ideally ISO
-  source: 'SAM.gov' | 'SEPTA'; // To distinguish where the bid came from
-  linkToOpportunity?: string; // Optional link back to the original opportunity details
+  deadline: string; 
+  source: 'SAM.gov' | 'SEPTA'; 
+  linkToOpportunity?: string; 
 }
 
 export default function Home() {
   const router = useRouter();
-  const pathname = usePathname(); // Get current pathname
+  const pathname = usePathname(); 
   const [error, setError] = useState<string | null>(null);
-  const [septaListingsCount, setSeptaListingsCount] = useState<number | null>(null);
+  const [septaListingsCount, setSeptaListingsCount] = useState<number | null>(0); // Default to 0
   const [samListingsCount, setSamListingsCount] = useState<number | null>(null);
-  const { toast } = useToast(); // Initialize toast
+  const { toast } = useToast(); 
   const [isClient, setIsClient] = useState(false);
 
    // Dummy data for Action Items - replace with actual data fetching later
@@ -72,59 +74,64 @@ export default function Home() {
    const [ongoingBids, setOngoingBids] = useState<OngoingBid[]>([]);
 
   useEffect(() => {
-    setIsClient(true); // Indicate component has mounted
+    setIsClient(true); 
   }, []);
 
 
   useEffect(() => {
     if (isClient) {
       // Fetch SEPTA listings count
-      // const fetchSeptaData = async () => {
-      //   try {
-      //     const scriptResponse = await fetch('/api/run-python-script');
-      //     if (!scriptResponse.ok) {
-      //       console.error(`Python script execution failed: HTTP ${scriptResponse.status}`);
-      //       try {
-      //         const errorData = await scriptResponse.json();
-      //         setError(`Python script failed: HTTP ${scriptResponse.status} - ${errorData.error}`);
-      //       } catch (e) {
-      //         setError(`Python script failed: HTTP ${scriptResponse.status} - ${scriptResponse.statusText}`);
-      //       }
-      //       setSeptaListingsCount(0);
-      //       return;
-      //     }
-      //      // If script runs, assume septa_open_quotes.json is updated.
-      //      // Then fetch from the local JSON file via API.
-      //     const septaResponse = await fetch('/api/septa-listings');
-      //     if (septaResponse.ok) {
-      //       const data = await septaResponse.json();
-      //       setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
-      //     } else {
-      //       console.error("Could not fetch SEPTA listings count");
-      //       setError(`Failed to fetch SEPTA listings count: HTTP ${septaResponse.status}`);
+      const fetchSeptaData = async () => {
+        try {
+          const scriptResponse = await fetch('/api/run-python-script');
+          if (!scriptResponse.ok) {
+            console.error(`Python script execution failed: HTTP ${scriptResponse.status}`);
+            try {
+              const errorData = await scriptResponse.json();
+              setError(`Python script failed: HTTP ${scriptResponse.status} - ${errorData.error}`);
+            } catch (e) {
+              setError(`Python script failed: HTTP ${scriptResponse.status} - ${scriptResponse.statusText}`);
+            }
             setSeptaListingsCount(0);
-      //     }
-      //   } catch (err: any) {
-      //     console.error('Error processing SEPTA data:', err);
-      //     setError(err.message || 'An unexpected error occurred while processing SEPTA data.');
-      //     setSeptaListingsCount(0);
-      //   }
-      // };
-      // fetchSeptaData();
+            return;
+          }
+           // If script runs, assume septa_open_quotes.json is updated.
+           // Then fetch from the local JSON file via API.
+          const septaResponse = await fetch('/api/septa-listings');
+          if (septaResponse.ok) {
+            const data = await septaResponse.json();
+            setSeptaListingsCount(Array.isArray(data) ? data.length : 0);
+          } else {
+            console.error("Could not fetch SEPTA listings count");
+            setError(`Failed to fetch SEPTA listings count: HTTP ${septaResponse.status}`);
+            setSeptaListingsCount(0);
+          }
+        } catch (err: any) {
+          console.error('Error processing SEPTA data:', err);
+          setError(err.message || 'An unexpected error occurred while processing SEPTA data.');
+          setSeptaListingsCount(0);
+        }
+      };
+      fetchSeptaData();
 
-      // Fetch SAM.gov listings count (using dummy data logic for now)
-      // This should ideally come from the actual data source or a count API if available
-      // For now, mimicking the dummy data length from sam-gov.ts
-      // Replace this with actual fetch if sam-gov.ts provides a count or if an API for count exists
-      import('@/services/sam-gov').then(module => {
-        // Simulating fetching and getting length. Replace with actual API call if available.
-        module.getSamGovOpportunities({}).then(data => {
-          setSamListingsCount(data.length);
-        }).catch(e => {
-            console.error("Error fetching SAM.gov count:", e);
+      // Fetch SAM.gov listings count
+      const fetchSamGovCount = async () => {
+        try {
+          const response = await fetch('/api/sam-gov'); // Fetch from your API route
+          if (!response.ok) {
+            console.error("Could not fetch SAM.gov listings count from API route");
             setSamListingsCount(0);
-        });
-      });
+            return;
+          }
+          const data: SamGovOpportunity[] = await response.json();
+          setSamListingsCount(data.length);
+        } catch (e) {
+          console.error("Error fetching SAM.gov count from API route:", e);
+          setSamListingsCount(0);
+        }
+      };
+      fetchSamGovCount();
+
 
       // Load ongoing bids from localStorage
       console.log("Home page useEffect triggered, re-fetching ongoing bids from localStorage.");
@@ -136,15 +143,15 @@ export default function Home() {
           console.log("Loaded ongoing bids:", parsedBids);
         } catch (e) {
           console.error("Failed to parse ongoing bids from localStorage", e);
-          localStorage.removeItem('ongoingBids'); // Clear corrupted data
-          setOngoingBids([]); // Reset to empty array
+          localStorage.removeItem('ongoingBids'); 
+          setOngoingBids([]); 
         }
       } else {
-         setOngoingBids([]); // No bids found, ensure it's an empty array
+         setOngoingBids([]); 
          console.log("No ongoing bids found in localStorage.");
       }
     }
-  }, [isClient, pathname]); // Add pathname as a dependency
+  }, [isClient, pathname]); 
 
 
   const navigateTo = (path: string) => {
@@ -155,17 +162,17 @@ export default function Home() {
    const getStatusBadgeVariant = (status: BidStatus): "default" | "secondary" | "destructive" | "outline" => {
      switch (status) {
        case "Drafting":
-         return "outline"; // Grayish
+         return "outline"; 
        case "RFQs Sent":
        case "Quotes Received":
        case "Final Quotes Selected":
        case "Bid Submitted":
-         return "default"; // Primary blue
+         return "default"; 
        case "Clarification":
-         return "secondary"; // Yellowish/orange
+         return "secondary"; 
        case "Bid Approved":
        case "Bid Completed":
-         return "default"; // Use success styling below
+         return "default"; 
        default:
          return "outline";
      }
@@ -301,13 +308,13 @@ export default function Home() {
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 p-6 bg-white"> {/* Changed to white */}
+          <main className="flex-1 p-6 bg-white"> 
             {error && <div className="mb-4 rounded border border-destructive bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
             {/* Use grid with 4 columns on large screens */}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
 
               {/* Section 1: Portals */}
-              <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* SAM.gov Card */}
+              <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> 
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-lg font-medium text-primary">SAM.gov</CardTitle>
                    <Building className="h-5 w-5 text-muted-foreground" />
@@ -321,7 +328,7 @@ export default function Home() {
                 </CardContent>
               </Card>
 
-              <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* SEPTA Card */}
+              <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> 
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-lg font-medium text-primary">SEPTA</CardTitle>
                   <Briefcase className="h-5 w-5 text-muted-foreground" />
@@ -336,7 +343,7 @@ export default function Home() {
               </Card>
 
               {/* Section 2: Action Items & Ongoing Bids */}
-              <Card className="lg:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Action Items Card */}
+              <Card className="lg:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> 
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-lg font-medium text-primary">Action Items</CardTitle>
                   <BellRing className="h-5 w-5 text-muted-foreground" />
@@ -384,7 +391,7 @@ export default function Home() {
                 </CardContent>
               </Card>
 
-               <Card className="lg:col-span-3 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Ongoing Bids Table */}
+               <Card className="lg:col-span-3 hover:shadow-lg transition-shadow duration-200 rounded-lg"> 
                  <CardHeader>
                    <CardTitle>Ongoing Bids</CardTitle>
                    <CardDescription>Your current bidding activities.</CardDescription>
@@ -429,7 +436,7 @@ export default function Home() {
                </Card>
 
               {/* Section 3: Payments Summary & Performance Overview */}
-               <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Payments Summary Card */}
+               <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> 
                  <CardHeader className="flex flex-row items-center justify-between pb-2">
                    <CardTitle className="text-lg font-medium text-primary">Payments Summary</CardTitle>
                    <CircleDollarSign className="h-5 w-5 text-muted-foreground" />
@@ -459,7 +466,7 @@ export default function Home() {
                  </CardContent>
                </Card>
 
-              <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Performance Overview */}
+              <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> 
                 <CardHeader>
                   <CardTitle>Performance Overview (Weekly)</CardTitle>
                   <CardDescription>Key metrics for the past week.</CardDescription>
@@ -517,7 +524,7 @@ export default function Home() {
               </Card>
 
               {/* Section 4: Charts */}
-              <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Bids by Category Chart Card */}
+              <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> 
                 <CardHeader>
                   <CardTitle>Bids by Category</CardTitle>
                   <CardDescription>Distribution of bids across different categories.</CardDescription>
@@ -527,17 +534,17 @@ export default function Home() {
                 </CardContent>
               </Card>
 
-               <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Bids by Portal Chart Card */}
+               <Card className="lg:col-span-2 hover:shadow-lg transition-shadow duration-200 rounded-lg"> 
                   <BidsByPortalChart />
                </Card>
 
                 {/* Section 5: Quick Links & Recommendations */}
-                <Card className="lg:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Quick Links Card */}
+                <Card className="lg:col-span-1 hover:shadow-lg transition-shadow duration-200 rounded-lg"> 
                    <CardHeader>
                        <CardTitle>Quick Links</CardTitle>
                    </CardHeader>
                    <CardContent className="grid grid-cols-1 gap-4">
-                        {/* Updated Links with Icons */}
+                        
                        <Button variant="link" className="justify-start p-0 h-auto text-sm text-primary hover:underline">
                          <FilePlus className="mr-2 h-4 w-4" /> New bid entry form
                        </Button>
@@ -556,7 +563,7 @@ export default function Home() {
                    </CardContent>
                </Card>
 
-               <Card className="lg:col-span-3 hover:shadow-lg transition-shadow duration-200 rounded-lg"> {/* Recommendations Card */}
+               <Card className="lg:col-span-3 hover:shadow-lg transition-shadow duration-200 rounded-lg"> 
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="text-lg font-medium text-primary">Recommendations</CardTitle>
                     <Lightbulb className="h-5 w-5 text-muted-foreground" />
@@ -592,7 +599,7 @@ export default function Home() {
                        variant="outline"
                        size="sm"
                        className="mt-4 w-full"
-                       onClick={() => navigateTo('/recommendations')} // Navigate to recommendations page
+                       onClick={() => navigateTo('/recommendations')} 
                      >
                        View All Recommendations
                      </Button>

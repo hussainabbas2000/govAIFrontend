@@ -24,7 +24,7 @@ import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover';
 import {cn} from '@/lib/utils';
 import {format} from 'date-fns';
 import {Icons} from '@/components/icons';
-import {SamGovOpportunity, getSamGovOpportunities} from '@/services/sam-gov';
+import type { SamGovOpportunity } from '@/types/sam-gov'; // Updated import
 import {Checkbox} from '@/components/ui/checkbox';
 import Loading from '@/app/loading';
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,20 +50,26 @@ export default function SamGovOpportunitiesPage() {
     const fetchAllData = async () => {
       setLoading(true);
       setError(null);
+      
+      const queryParams = new URLSearchParams();
+      if (searchQuery) queryParams.append('searchQuery', searchQuery);
+      if (ncodeFilter) queryParams.append('ncode', ncodeFilter);
+      if (locationFilter) queryParams.append('location', locationFilter);
+      if (dateFilter) queryParams.append('dateFilter', dateFilter.toISOString());
+      if (showOnlyOpen) queryParams.append('showOnlyOpen', 'true');
+
 
       try {
-        const opportunities = await getSamGovOpportunities({
-            searchQuery,
-            ncode: ncodeFilter,
-            location: locationFilter,
-            dateFilter: dateFilter?.toISOString(), 
-            showOnlyOpen: showOnlyOpen ? 'true' : '', 
-         });
-
+        const response = await fetch(`/api/sam-gov?${queryParams.toString()}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        const opportunities: SamGovOpportunity[] = await response.json();
         setAllOpportunities(opportunities);
 
       } catch (error: any) {
-        console.error("Error fetching SAM.gov data:", error);
+        console.error("Error fetching SAM.gov data from API route:", error);
         setError(error.message || "Failed to load opportunities.");
         setAllOpportunities([]);
       } finally {
@@ -74,17 +80,15 @@ export default function SamGovOpportunitiesPage() {
     fetchAllData();
   }, [searchQuery, ncodeFilter, locationFilter, dateFilter, showOnlyOpen]); 
 
-  const filteredOpportunities = allOpportunities; 
-
-  const currentTotalItems = filteredOpportunities.length;
+  const currentTotalItems = allOpportunities.length; // Use allOpportunities for total as filters are applied server-side now
   const totalPages = Math.ceil(currentTotalItems / itemsPerPage);
 
   const currentOpportunities = useMemo(() => {
-     return filteredOpportunities.slice(
+     return allOpportunities.slice( // Paginate the already filtered (or all if no filters) list
        (currentPage - 1) * itemsPerPage,
        currentPage * itemsPerPage
      );
-  }, [filteredOpportunities, currentPage]);
+  }, [allOpportunities, currentPage]);
 
 
   const goToPreviousPage = () => {
@@ -127,6 +131,10 @@ export default function SamGovOpportunitiesPage() {
 
    const truncateDescription = (text: string | undefined, wordLimit: number): string => {
     if (!text) return 'N/A';
+    // Check if the text is a URL
+    if (text.startsWith('http://') || text.startsWith('https://')) {
+      return text; // Return the URL as is if it's a link
+    }
     const words = text.split(' ');
     if (words.length <= wordLimit) {
       return text;

@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getSamGovOpportunities, SamGovOpportunity } from '@/services/sam-gov';
+import type { SamGovOpportunity } from '@/types/sam-gov'; // Updated import
 import { summarizeContractOpportunity, SummarizeContractOpportunityOutput } from '@/ai/flows/summarize-contract-opportunity';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,8 +50,13 @@ export default function BidSummaryPage() {
       setError(null);
 
       try {
-        const allOpportunities = await getSamGovOpportunities({});
-        const opportunity = allOpportunities.find(opp => opp.id === id);
+        const response = await fetch(`/api/sam-gov?id=${id}`); // Fetch specific opportunity
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        const opportunities: SamGovOpportunity[] = await response.json();
+        const opportunity = opportunities.find(op => op.id === id); // Ensure we find the correct one if API returns array
 
         if (!opportunity) {
           throw new Error('Opportunity not found.');
@@ -186,7 +192,7 @@ export default function BidSummaryPage() {
     return <Loading />;
   }
 
-  if (error && !isSubmitting) { // Don't show main error if submitting error occurs
+  if (error && !isSubmitting) { 
     return (
       <main className="flex flex-1 flex-col items-center justify-center p-6">
         <Alert variant="destructive" className="w-full max-w-lg">
@@ -201,7 +207,7 @@ export default function BidSummaryPage() {
     );
   }
 
-  if (!summary && !loading && !error) { // Handle case where summary is null but no error/loading
+  if (!summary && !loading && !error) { 
     return (
       <main className="flex flex-1 items-center justify-center p-6">
         <p>Bid summary could not be loaded.</p>
@@ -266,18 +272,18 @@ export default function BidSummaryPage() {
                   </Label>
                   {summary ? (
                       Object.keys(summary.quantities || {}).length > 0 ? (
-                          Object.entries(summary.quantities).map(([product, quantity]) => (
-                              <p key={product} className="text-base font-medium text-foreground">
+                        <div className="text-base font-medium text-foreground">
+                          {Object.entries(summary.quantities).map(([product, quantity]) => (
+                              <p key={product}>
                                   {product}: {quantity}
                               </p>
-                          ))
+                          ))}
+                        </div>
                       ) : (
                           <p className="text-base font-medium text-foreground italic">None specified</p>
                       )
                   ) : (
-                    <span className="text-base font-medium text-foreground">
-                      <Skeleton className="h-12 w-full" />
-                    </span>
+                    <Skeleton className="h-12 w-full" />
                   )}
                 </div>
 
@@ -295,9 +301,7 @@ export default function BidSummaryPage() {
                 {summary ? (
                     <p className="text-base font-medium text-foreground">{summary.location}</p>
                 ) : (
-                  <span className="text-base font-medium text-foreground">
-                    <Skeleton className="h-6 w-3/4" />
-                  </span>
+                   <Skeleton className="h-6 w-3/4" />
                 )}
                 </div>
             </div>
@@ -318,7 +322,7 @@ export default function BidSummaryPage() {
                   ? "Update Bid Draft" 
                   : "Start Bidding Process"}
               </Button>
-              <Button onClick={handleProceedToQuoteRequest} disabled={!summary} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Button onClick={handleProceedToQuoteRequest} disabled={!summary}>
                 <ShoppingCart className="mr-2 h-4 w-4" />
                 Proceed to Quote Request
               </Button>

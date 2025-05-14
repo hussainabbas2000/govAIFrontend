@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Summarizes a contract opportunity using AI, extracting key fields.
@@ -9,7 +10,7 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import type {SamGovOpportunity} from '@/services/sam-gov';
+import type {SamGovOpportunity} from '@/types/sam-gov'; // Updated import
 
 // Define input schema accepting SamGovOpportunity
 const SummarizeContractOpportunityInputSchema = z.object({
@@ -21,7 +22,7 @@ export type SummarizeContractOpportunityInput = z.infer<typeof SummarizeContract
 // Here, 'quantities' is expected as a JSON string from the AI.
 const InternalPromptOutputSchema = z.object({
   requiredProductService: z.array(z.string()).describe('A list of all main products or services required by the opportunity.'),
-  quantities: z.string().describe('A JSON string representing an object that maps each required product/service to its numerical quantity. Example: "{\\"SATA HDD\\": 500, \\"2TB DDR4 RAM\\": 200}"'),
+  quantities: z.string().describe('A JSON STRING representing an object that maps each required product/service to its numerical quantity. Example: "{\\"SATA HDD\\": 500, \\"2TB DDR4 RAM\\": 200}"'),
   deadline: z.string().describe('The closing date or response deadline for the opportunity.'),
   location: z.string().describe('The primary location where the work will be performed or delivered.'),
 });
@@ -44,7 +45,7 @@ export async function summarizeContractOpportunity(input: SummarizeContractOppor
 const prompt = ai.definePrompt({
   name: 'summarizeContractOpportunityPrompt',
   input: { schema: SummarizeContractOpportunityInputSchema },
-  output: { schema: InternalPromptOutputSchema }, // AI generates output matching this schema
+  output: { schema: InternalPromptOutputSchema }, 
   prompt: `Analyze the following contract opportunity details and extract the requested information. Focus on identifying *all* core requirements, their quantities, the deadline, and the primary location.
 
 Opportunity Title: {{{opportunity.title}}}
@@ -75,7 +76,7 @@ Return the extracted information in the specified JSON format. Make sure 'requir
 
 const summarizeContractOpportunityFlow = ai.defineFlow<
   typeof SummarizeContractOpportunityInputSchema,
-  typeof SummarizeContractOpportunityOutputSchema // Flow's final output uses the parsed quantities
+  typeof SummarizeContractOpportunityOutputSchema 
 >({
   name: 'summarizeContractOpportunityFlow',
   inputSchema: SummarizeContractOpportunityInputSchema,
@@ -94,15 +95,12 @@ const summarizeContractOpportunityFlow = ai.defineFlow<
   } catch (e) {
     console.error("Failed to parse quantities JSON string from AI:", e);
     console.error("AI returned quantities string:", rawOutput.quantities);
-    // Fallback to an empty object or handle as appropriate for your application
-    // For example, if some products were identified but quantities failed to parse,
-    // you might want to assign default quantity 1 to them.
+    
     parsedQuantities = (rawOutput.requiredProductService || []).reduce((acc, productName) => {
-        acc[productName] = 1; // Default to 1 if parsing fails
+        acc[productName] = 1; 
         return acc;
     }, {} as Record<string, number>);
-    // Alternatively, throw a more specific error or return a partial result with an error indicator
-    // throw new Error("AI returned invalid JSON for quantities.");
+    
   }
 
    return {
@@ -112,4 +110,3 @@ const summarizeContractOpportunityFlow = ai.defineFlow<
     location: rawOutput.location || "Could not determine",
    };
 });
-

@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getSamGovOpportunities, SamGovOpportunity } from '@/services/sam-gov';
+import type { SamGovOpportunity } from '@/types/sam-gov'; // Updated import
 import { summarizeContractOpportunity, SummarizeContractOpportunityOutput } from '@/ai/flows/summarize-contract-opportunity';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,12 +25,12 @@ interface BidSummary extends SummarizeContractOpportunityOutput {
 interface FlaskApiOffer {
   seller: string;
   unit_price: number;
-  quantity: number; // Quantity requested, good for verification
+  quantity: number; 
   shipping: number | null;
   taxes: number | null;
   total_cost: number;
   url: string;
-  contact_or_quote?: string; // Optional, as per your Python script's intent
+  contact_or_quote?: string; 
 }
 
 interface FlaskApiResponse {
@@ -40,19 +40,19 @@ interface FlaskApiResponse {
 
 // Updated to align with Flask API response and UI needs
 interface VendorOffer {
-  vendorName?: string;      // from FlaskApiOffer.seller
-  rate: number;             // from FlaskApiOffer.unit_price
-  websiteLink?: string;     // from FlaskApiOffer.url
-  contactOrQuoteUrl?: string; // from FlaskApiOffer.contact_or_quote or derived from .url
-  subtotal: number;         // from FlaskApiOffer.total_cost
-  shipping?: number | null; // from FlaskApiOffer.shipping
-  taxes?: number | null;    // from FlaskApiOffer.taxes
-  requestedQuantity?: number; // from FlaskApiOffer.quantity (for reference)
+  vendorName?: string;      
+  rate: number;             
+  websiteLink?: string;     
+  contactOrQuoteUrl?: string; 
+  subtotal: number;         
+  shipping?: number | null; 
+  taxes?: number | null;    
+  requestedQuantity?: number; 
 }
 
 interface ProductOffersGroup {
   productName: string;
-  identifiedQuantity: string; // Display string for quantity (e.g., "500 units of X")
+  identifiedQuantity: string; 
   offers: VendorOffer[];
 }
 
@@ -90,8 +90,14 @@ export default function RfqPage() {
       setPricingError(null);
 
       try {
-        const allOpportunities = await getSamGovOpportunities({});
-        const currentOpportunity = allOpportunities.find(opp => opp.id === id);
+        const samGovResponse = await fetch(`/api/sam-gov?id=${id}`);
+        if (!samGovResponse.ok) {
+            const errorData = await samGovResponse.json();
+            throw new Error(errorData.error || `Failed to fetch opportunity details: ${samGovResponse.status}`);
+        }
+        const opportunities: SamGovOpportunity[] = await samGovResponse.json();
+        const currentOpportunity = opportunities.find(opp => opp.id === id);
+
         if (!currentOpportunity) {
           throw new Error('Opportunity not found.');
         }
@@ -106,14 +112,13 @@ export default function RfqPage() {
         };
         setBidSummary(currentBidSummary);
         console.log("AI Summary received:", summaryOutput);
-
-        // Use the already correctly formatted quantities from summaryOutput
+        
         const productQuantitiesForApi = summaryOutput.quantities;
 
         if (summaryOutput.requiredProductService && summaryOutput.requiredProductService.length > 0 && productQuantitiesForApi) {
           const productsForApi = summaryOutput.requiredProductService.map(productName => ({
             name: productName,
-            quantity: productQuantitiesForApi[productName] || 1 // Default to 1 if quantity not in map
+            quantity: productQuantitiesForApi[productName] || 1 
           }));
 
           console.log("Products for Flask API:", JSON.stringify(productsForApi, null, 2));
@@ -139,7 +144,7 @@ export default function RfqPage() {
           const flaskData: FlaskApiResponse = await flaskApiResponse.json();
           console.log("Received Flask API pricing info:", JSON.stringify(flaskData, null, 2));
 
-          // Transform Flask API data to UiFindProductPricingOutput
+          
           const transformedProductsWithOffers: ProductOffersGroup[] = Object.entries(flaskData).map(([productName, apiOffers]) => {
             const aiQuantityForProduct = currentBidSummary.quantities[productName] || (apiOffers && apiOffers.length > 0 ? apiOffers[0].quantity : 1);
             const identifiedQuantityForDisplay = `${aiQuantityForProduct} units of ${productName}`;

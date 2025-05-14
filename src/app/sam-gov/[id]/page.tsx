@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getSamGovOpportunities, SamGovOpportunity } from '@/services/sam-gov';
+import type { SamGovOpportunity } from '@/types/sam-gov'; // Updated import
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Loading from '@/app/loading'; 
@@ -30,35 +30,41 @@ export default function SamGovOpportunityPage() {
 
       setLoading(true);
       setError(null);
-      setDetailedDescription(null); // Reset detailed description
+      setDetailedDescription(null); 
 
       try {
-        const allOpportunities = await getSamGovOpportunities({}); // Fetch all (uses cache or API)
+        // Fetch all opportunities from the API route
+        const response = await fetch(`/api/sam-gov`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        const allOpportunities: SamGovOpportunity[] = await response.json();
         const foundOpportunity = allOpportunities.find(opp => opp.id === id);
 
         if (foundOpportunity) {
           setOpportunity(foundOpportunity);
-          // Now handle fetching detailed description if opportunity.description is a URL
           const initialDesc = foundOpportunity.description;
           if (initialDesc && (initialDesc.startsWith('http://') || initialDesc.startsWith('https://'))) {
             setDescriptionLoading(true);
             try {
-              const descResponse = await fetch(initialDesc);
+              // Fetching description content as text
+              const descResponse = await fetch(initialDesc); 
               if (!descResponse.ok) {
-                // Try to get error text, but don't let it crash the main flow
                 let errorText = `Network response was not ok (status: ${descResponse.status})`;
                 try {
                     errorText = await descResponse.text();
                 } catch (e) { /* ignore text parsing error */ }
-                throw new Error(errorText);
+                console.error(`Failed to fetch description from ${initialDesc}: ${errorText}`);
+                setDetailedDescription(`Failed to load full description from source. Status: ${descResponse.status}`);
+              } else {
+                const text = await descResponse.text();
+                const strippedText = text.replace(/<[^>]+>/g, ''); 
+                setDetailedDescription(strippedText);
               }
-              const text = await descResponse.text();
-              // Basic HTML stripping (can be improved with a library if complex HTML)
-              const strippedText = text.replace(/<[^>]+>/g, ''); 
-              setDetailedDescription(strippedText);
             } catch (descError: any) {
               console.error('Failed to fetch detailed description:', descError);
-              setDetailedDescription(`Failed to load full description from source: ${initialDesc}. Error: ${descError.message}`);
+              setDetailedDescription(`Failed to load full description. Error: ${descError.message}`);
             } finally {
               setDescriptionLoading(false);
             }
@@ -70,7 +76,7 @@ export default function SamGovOpportunityPage() {
           setOpportunity(null);
         }
       } catch (err: any) {
-        console.error('Error fetching opportunity details:', err);
+        console.error('Error fetching opportunity details from API route:', err);
         setError(err.message || 'Failed to load opportunity details.');
         setOpportunity(null);
       } finally {
