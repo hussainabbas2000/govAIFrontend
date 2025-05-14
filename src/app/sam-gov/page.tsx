@@ -1,3 +1,4 @@
+
 'use client';
 
 import {useEffect, useState, useMemo} from 'react';
@@ -34,10 +35,7 @@ import Link from 'next/link';
 const itemsPerPage = 10;
 
 export default function SamGovOpportunitiesPage() {
-  // State for the full list of opportunities (initially empty)
   const [allOpportunities, setAllOpportunities] = useState<SamGovOpportunity[]>([]);
-  // State for descriptions (might be populated later or kept separate)
-  const [descriptions, setDescriptions] = useState<Record<string, string>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [ncodeFilter, setNcodeFilter] = useState('');
@@ -52,28 +50,17 @@ export default function SamGovOpportunitiesPage() {
     const fetchAllData = async () => {
       setLoading(true);
       setError(null);
-      setDescriptions({}); // Reset descriptions
 
       try {
-        // Fetch opportunities list (using dummy data function for now)
-        // Pass current filters to the dummy data function so it can filter
         const opportunities = await getSamGovOpportunities({
             searchQuery,
             ncode: ncodeFilter,
             location: locationFilter,
-            dateFilter: dateFilter?.toISOString(), // Pass date as string if needed
-            showOnlyOpen: showOnlyOpen ? 'true' : '', // Pass boolean as string
+            dateFilter: dateFilter?.toISOString(), 
+            showOnlyOpen: showOnlyOpen ? 'true' : '', 
          });
 
         setAllOpportunities(opportunities);
-
-        // Populate descriptions state from fetched data if descriptions are included
-        const newDescriptions: Record<string, string> = {};
-        opportunities.forEach(opp => {
-          // If descriptions are fetched within getSamGovOpportunities (even dummy ones)
-          newDescriptions[opp.id] = opp.description || "No description available.";
-        });
-        setDescriptions(newDescriptions); // You might adjust this if descriptions are fetched separately
 
       } catch (error: any) {
         console.error("Error fetching SAM.gov data:", error);
@@ -84,18 +71,14 @@ export default function SamGovOpportunitiesPage() {
       }
     };
 
-    // Fetch data when component mounts or filters change
     fetchAllData();
-  }, [searchQuery, ncodeFilter, locationFilter, dateFilter, showOnlyOpen]); // Re-fetch when filters change
+  }, [searchQuery, ncodeFilter, locationFilter, dateFilter, showOnlyOpen]); 
 
-  // NOTE: Filtering is now handled within getSamGovOpportunities for dummy data
-  // If using real API with cache, filtering would happen here on the cached `allOpportunities`
-  const filteredOpportunities = allOpportunities; // The data is already filtered
+  const filteredOpportunities = allOpportunities; 
 
   const currentTotalItems = filteredOpportunities.length;
   const totalPages = Math.ceil(currentTotalItems / itemsPerPage);
 
-  // Paginate the *already filtered* opportunities
   const currentOpportunities = useMemo(() => {
      return filteredOpportunities.slice(
        (currentPage - 1) * itemsPerPage,
@@ -114,39 +97,36 @@ export default function SamGovOpportunitiesPage() {
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
-    setCurrentPage(1); // Reset page on filter change
+    setCurrentPage(1); 
   };
 
   const handleNcodeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setNcodeFilter(event.target.value);
-    setCurrentPage(1); // Reset page on filter change
+    setCurrentPage(1); 
   };
 
   const handleLocationChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setLocationFilter(event.target.value);
-    setCurrentPage(1); // Reset page on filter change
+    setCurrentPage(1); 
   };
 
   const handleClearDate = () => {
     setDateFilter(undefined);
-    setCurrentPage(1); // Reset page on filter change
+    setCurrentPage(1); 
   };
 
   const handleDateSelect = (date: Date | undefined) => {
     setDateFilter(date);
-    setCurrentPage(1); // Reset page on filter change
+    setCurrentPage(1); 
   }
 
   const handleShowOnlyOpenChange = (checked: boolean | 'indeterminate') => {
-    setShowOnlyOpen(!!checked); // Ensure boolean value
-    setCurrentPage(1); // Reset page on filter change
+    setShowOnlyOpen(!!checked); 
+    setCurrentPage(1); 
   }
 
-   // Function to truncate description
    const truncateDescription = (text: string | undefined, wordLimit: number): string => {
     if (!text) return 'N/A';
-    // Handle cases where description might still be a URL if dummy data isn't fully populated
-    if (text.startsWith('http')) return 'Description available via link.';
     const words = text.split(' ');
     if (words.length <= wordLimit) {
       return text;
@@ -154,18 +134,21 @@ export default function SamGovOpportunitiesPage() {
     return words.slice(0, wordLimit).join(' ') + '...';
   };
 
+  const isUrl = (text: string | undefined): boolean => {
+    if (!text) return false;
+    return text.startsWith('http://') || text.startsWith('https://');
+  }
 
-  if (loading && allOpportunities.length === 0) { // Show loading component only on initial load
+
+  if (loading && allOpportunities.length === 0) { 
     return <Loading />;
   }
 
   return (
     <main className="flex flex-1">
-      {/* Sidebar for Filters */}
       <aside className="w-64 border-r p-4 flex flex-col space-y-4 bg-secondary/50">
         <h3 className="text-lg font-semibold mb-2">Filters</h3>
 
-        {/* Search Filter */}
         <div>
           <Label htmlFor="search">Search:</Label>
           <Input
@@ -177,7 +160,6 @@ export default function SamGovOpportunitiesPage() {
           />
         </div>
 
-        {/* NAICS Code Filter */}
         <div>
           <Label htmlFor="naics">NAICS Code:</Label>
           <Input
@@ -189,7 +171,6 @@ export default function SamGovOpportunitiesPage() {
           />
         </div>
 
-        {/* Location Filter */}
         <div>
           <Label htmlFor="location">Execute Location:</Label>
           <Input
@@ -201,7 +182,6 @@ export default function SamGovOpportunitiesPage() {
           />
         </div>
 
-        {/* Date Filter */}
         <div>
           <Label>Closing Date (On or After):</Label>
           <Popover>
@@ -251,7 +231,6 @@ export default function SamGovOpportunitiesPage() {
           </div>
       </aside>
 
-      {/* Main Content Area for Listings */}
       <div className="flex-1 p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-3xl font-bold">SAM.gov Opportunities</h2>
@@ -260,9 +239,8 @@ export default function SamGovOpportunitiesPage() {
 
         {error && <div className="mb-4 text-red-600">Error: {error}</div>}
 
-        {loading && currentOpportunities.length === 0 ? ( // Show skeletons only if loading AND no items shown yet
+        {loading && currentOpportunities.length === 0 ? ( 
            <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-             {/* Show Skeletons */}
              {Array.from({ length: itemsPerPage }).map((_, index) => (
                <Card key={`skeleton-${index}`} className="shadow-md rounded-lg">
                  <CardHeader>
@@ -302,9 +280,16 @@ export default function SamGovOpportunitiesPage() {
                    <CardDescription>
                       Closing Date: {opportunity.closingDate ? format(new Date(opportunity.closingDate), 'PPP') : 'N/A'}
                    </CardDescription>
-                    {/* Display Truncated Description */}
                     <CardDescription className="pt-2 text-foreground">
-                        Description: {truncateDescription(descriptions[opportunity.id] || opportunity.description, 50)}
+                      Description: {
+                        isUrl(opportunity.description) ? (
+                          <a href={opportunity.description} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+                            View Description Source <Icons.externalLink className="inline-block h-3 w-3 ml-1" />
+                          </a>
+                        ) : (
+                          truncateDescription(opportunity.description, 30)
+                        )
+                      }
                     </CardDescription>
                 </CardContent>
                 <div className="p-6 pt-0 mt-auto">
@@ -321,7 +306,6 @@ export default function SamGovOpportunitiesPage() {
           <p className="text-center text-muted-foreground mt-10">No opportunities match the current filters.</p>
         )}
 
-        {/* Pagination Controls */}
         { totalPages > 1 && (
             <div className="flex w-full items-center justify-center space-x-2 p-4 mt-6">
               <Button

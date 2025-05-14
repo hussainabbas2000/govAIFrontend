@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -5,41 +6,65 @@ import { useParams, useRouter } from 'next/navigation';
 import { getSamGovOpportunities, SamGovOpportunity } from '@/services/sam-gov';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import Loading from '@/app/loading'; // Use the central loading component
+import Loading from '@/app/loading'; 
 import { Icons } from '@/components/icons';
-import { format, parseISO } from 'date-fns'; // Import parseISO
-import { Label } from '@/components/ui/label'; // Import Label component
+import { format, parseISO } from 'date-fns'; 
+import { Label } from '@/components/ui/label'; 
 import { Skeleton } from '@/components/ui/skeleton';
-import Link from 'next/link'; // Import Link for navigation
+import Link from 'next/link'; 
 
 export default function SamGovOpportunityPage() {
   const params = useParams();
   const router = useRouter();
-  const id = params.id as string; // Assuming id is always present
+  const id = params.id as string; 
   const [opportunity, setOpportunity] = useState<SamGovOpportunity | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [description, setDescription] = useState<string | null>(null); // Use state for description
+  const [detailedDescription, setDetailedDescription] = useState<string | null>(null);
+  const [descriptionLoading, setDescriptionLoading] = useState<boolean>(false);
+
 
   useEffect(() => {
     const fetchOpportunityDetails = async () => {
-      if (!id) return; // Guard against missing ID
+      if (!id) return; 
 
       setLoading(true);
       setError(null);
-      setDescription(null); // Reset description
+      setDetailedDescription(null); // Reset detailed description
 
       try {
-        // Using the cached/dummy data approach from getSamGovOpportunities
-        // Pass an empty object or specific criteria if needed, though for fetching one item,
-        // filtering the full list is the current approach with dummy/cached data.
-        const allOpportunities = await getSamGovOpportunities({});
+        const allOpportunities = await getSamGovOpportunities({}); // Fetch all (uses cache or API)
         const foundOpportunity = allOpportunities.find(opp => opp.id === id);
 
         if (foundOpportunity) {
           setOpportunity(foundOpportunity);
-          // Set description directly from the found opportunity (dummy data has it)
-          setDescription(foundOpportunity.description || 'No description available.');
+          // Now handle fetching detailed description if opportunity.description is a URL
+          const initialDesc = foundOpportunity.description;
+          if (initialDesc && (initialDesc.startsWith('http://') || initialDesc.startsWith('https://'))) {
+            setDescriptionLoading(true);
+            try {
+              const descResponse = await fetch(initialDesc);
+              if (!descResponse.ok) {
+                // Try to get error text, but don't let it crash the main flow
+                let errorText = `Network response was not ok (status: ${descResponse.status})`;
+                try {
+                    errorText = await descResponse.text();
+                } catch (e) { /* ignore text parsing error */ }
+                throw new Error(errorText);
+              }
+              const text = await descResponse.text();
+              // Basic HTML stripping (can be improved with a library if complex HTML)
+              const strippedText = text.replace(/<[^>]+>/g, ''); 
+              setDetailedDescription(strippedText);
+            } catch (descError: any) {
+              console.error('Failed to fetch detailed description:', descError);
+              setDetailedDescription(`Failed to load full description from source: ${initialDesc}. Error: ${descError.message}`);
+            } finally {
+              setDescriptionLoading(false);
+            }
+          } else {
+            setDetailedDescription(initialDesc || 'No description available.');
+          }
         } else {
           setError('Opportunity not found.');
           setOpportunity(null);
@@ -57,7 +82,7 @@ export default function SamGovOpportunityPage() {
   }, [id]);
 
   if (loading) {
-    return <Loading />; // Show loading screen
+    return <Loading />; 
   }
 
   if (error) {
@@ -86,20 +111,18 @@ export default function SamGovOpportunityPage() {
     );
   }
 
-  // Helper to safely render location
   const renderLocation = (loc: SamGovOpportunity['location']) => {
     if (!loc) return 'N/A';
     const parts = [
       loc.city?.name,
       loc.state?.name,
       loc.zip
-    ].filter(Boolean); // Filter out undefined/null parts
-    return parts.join(', ') || 'N/A'; // Join with comma and space, or return N/A
+    ].filter(Boolean); 
+    return parts.join(', ') || 'N/A'; 
   };
 
-  // Format date safely
    const formattedClosingDate = opportunity.closingDate
-     ? format(parseISO(opportunity.closingDate), 'PPP HH:mm zzz') // Use parseISO for ISO strings
+     ? format(parseISO(opportunity.closingDate), 'PPP HH:mm zzz') 
      : 'N/A';
 
   return (
@@ -116,7 +139,6 @@ export default function SamGovOpportunityPage() {
             <CardDescription className="text-sm text-muted-foreground pt-2">Notice ID: {opportunity.id}</CardDescription>
           </CardHeader>
           <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Left Column */}
             <div className="space-y-4">
               <div className="opacity-90 transition-opacity hover:opacity-100">
                 <Label className="font-semibold text-primary">NAICS Code</Label>
@@ -151,7 +173,6 @@ export default function SamGovOpportunityPage() {
               </div>
             </div>
 
-            {/* Right Column */}
             <div className="space-y-4">
               <div className="opacity-90 transition-opacity hover:opacity-100">
                 <Label className="font-semibold text-primary">Type</Label>
@@ -171,18 +192,17 @@ export default function SamGovOpportunityPage() {
               </div>
             </div>
 
-            {/* Full Width Description */}
             <div className="md:col-span-2 pt-4 border-t mt-4">
               <Label className="text-xl font-semibold text-primary mb-2 block">Description</Label>
-              {description === null ? (
-                <Skeleton className="h-20 w-full" /> // Show skeleton while description loads/resolves
+              {descriptionLoading ? (
+                <Skeleton className="h-20 w-full" /> 
               ) : (
-                // Use prose for better text formatting, break-words to prevent overflow
-                <p className="text-foreground prose prose-sm max-w-none break-words whitespace-pre-wrap">{description}</p>
+                <p className="text-foreground prose prose-sm max-w-none break-words whitespace-pre-wrap">
+                  {detailedDescription || 'No description available.'}
+                </p>
               )}
             </div>
 
-            {/* Start Bidding Button */}
             <div className="md:col-span-2 mt-6 flex justify-end">
               <Button asChild size="lg">
                 <Link href={`/sam-gov/${id}/bid-summary`}>
@@ -194,7 +214,6 @@ export default function SamGovOpportunityPage() {
         </Card>
       </div>
 
-      {/* Add Tailwind CSS for animations */}
       <style jsx global>{`
         @keyframes fadeIn {
           from { opacity: 0; }

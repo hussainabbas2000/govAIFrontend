@@ -53,7 +53,6 @@ export interface SamGovOpportunity {
 }
 
 // --- Dummy Data Start ---
-// Updated descriptions to include quantities
 const dummySamGovOpportunities: SamGovOpportunity[] = [
   {
     id: "DUMMY001",
@@ -65,7 +64,7 @@ const dummySamGovOpportunities: SamGovOpportunity[] = [
     subtier: "National Oceanic and Atmospheric Administration (NOAA)",
     office: "Acquisition and Grants Office",
     type: "Solicitation",
-    link: "https://sam.gov/opp/DUMMY001", // Example link
+    link: "https://sam.gov/opp/DUMMY001",
     officeAddress: "Washington, DC 20230, USA",
     description: "Provide comprehensive IT support, including helpdesk, network management, and cybersecurity services for NOAA facilities. Requires support for approximately 500 users across 3 locations. Estimated 10 FTEs required."
   },
@@ -198,7 +197,7 @@ const dummySamGovOpportunities: SamGovOpportunity[] = [
    {
      id: "DUMMY011",
      title: "IT Hardware Procurement - Bulk Order",
-     ncode: "334111", // Electronic Computer Manufacturing
+     ncode: "334111",
      location: { city: { name: "Austin" }, state: { name: "TX" }, zip: "78701" },
      closingDate: "2024-11-01T16:00:00Z",
      department: "Department of Education",
@@ -216,7 +215,6 @@ const dummySamGovOpportunities: SamGovOpportunity[] = [
 interface SamGovCache {
   data: SamGovOpportunity[];
   lastFetched: number;
-  descriptions: Record<string, string>; // Cache for fetched descriptions
 }
 
 let samGovCache: SamGovCache | null = null;
@@ -244,20 +242,19 @@ function getOneYearBackDate(): string {
 /**
  * Asynchronously retrieves government contract opportunities from SAM.gov.
  * Uses dummy data if API fetching fails or is commented out.
- * Descriptions are taken directly from the main API response.
+ * The 'description' field from the API is stored as-is (text or URL).
  *
- * @param searchCriteria An object containing search criteria like ncode, location, dateFilter, showOnlyOpen.
- * @returns A promise that resolves to an array of SamGovOpportunity objects with descriptions.
+ * @param searchCriteria An object containing search criteria.
+ * @returns A promise that resolves to an array of SamGovOpportunity objects.
  */
 export async function getSamGovOpportunities(
-  searchCriteria: Record<string, any> // Accept various filter types
+  searchCriteria: Record<string, any>
 ): Promise<SamGovOpportunity[]> {
   const currentTime = Date.now();
 
-  // Check cache first
   if (samGovCache && (currentTime - samGovCache.lastFetched < CACHE_DURATION_MS)) {
     console.log("Serving SAM.gov opportunities from cache.");
-    return applyFilters(samGovCache.data, samGovCache.descriptions, searchCriteria);
+    return applyFilters(samGovCache.data, searchCriteria);
   }
 
   console.log("Fetching SAM.gov opportunities from API or fallback to dummy data.");
@@ -265,34 +262,28 @@ export async function getSamGovOpportunities(
 
   if (!apiKey) {
     console.warn('SAM_GOV_API_KEY or NEXT_PUBLIC_SAM_GOV_API_KEY is not set. Falling back to dummy data.');
-    const dummyDescriptions: Record<string, string> = {};
-    dummySamGovOpportunities.forEach(opp => {
-        dummyDescriptions[opp.id] = opp.description || "No description available.";
-    });
      samGovCache = {
       data: dummySamGovOpportunities,
-      descriptions: dummyDescriptions,
       lastFetched: currentTime,
     };
-    return applyFilters(dummySamGovOpportunities, dummyDescriptions, searchCriteria);
+    return applyFilters(dummySamGovOpportunities, searchCriteria);
   }
-
 
   const baseUrl = 'https://api.sam.gov/opportunities/v2/search';
   const defaultParams: Record<string, any> = {
     api_key: apiKey,
-    ptype: 'o,k,p', // Solicitation, Combined Synopsis/Solicitation, Presolicitation
+    ptype: 'o,k,p',
     postedFrom: getOneYearBackDate(),
     postedTo: getCurrentDate(),
-    limit: '1000' // Max limit per API documentation
+    limit: '1000'
   };
 
   let allOpportunitiesData: any[] = [];
   let offset = 0;
-  const limit = 1000; // Max records per page for SAM.gov API
+  const limit = 1000;
   let hasMore = true;
   let pagesFetched = 0;
-  const maxPages = 10; // Safety limit for number of pages to fetch
+  const maxPages = 10;
 
   console.log("Fetching all SAM.gov opportunities pages...");
 
@@ -309,22 +300,12 @@ export async function getSamGovOpportunities(
       if (!response.ok) {
         const errorBody = await response.text();
         console.error(`SAM.gov API error on page ${pagesFetched}: ${response.status} ${response.statusText}`, errorBody);
-        // If one page fails, we might decide to stop or try to continue with what we have
-        // For now, let's break and use dummy data if this happens early
-        if (pagesFetched <= 1) { // If first page fails
+        if (pagesFetched <= 1 && allOpportunitiesData.length === 0) {
              console.warn("Falling back to dummy data due to API error on first page.");
-             const dummyDescriptions: Record<string, string> = {};
-             dummySamGovOpportunities.forEach(opp => {
-                 dummyDescriptions[opp.id] = opp.description || "No description available.";
-             });
-             samGovCache = {
-               data: dummySamGovOpportunities,
-               descriptions: dummyDescriptions,
-               lastFetched: currentTime,
-             };
-             return applyFilters(dummySamGovOpportunities, dummyDescriptions, searchCriteria);
+             samGovCache = { data: dummySamGovOpportunities, lastFetched: currentTime };
+             return applyFilters(dummySamGovOpportunities, searchCriteria);
         }
-        hasMore = false; // Stop fetching on error after first page
+        hasMore = false;
         break;
       }
 
@@ -346,42 +327,24 @@ export async function getSamGovOpportunities(
 
     } catch (error: any) {
       console.error(`Error fetching data from SAM.gov API on page ${pagesFetched}:`, error);
-       if (pagesFetched <= 1) {
+       if (pagesFetched <= 1 && allOpportunitiesData.length === 0) {
             console.warn("Falling back to dummy data due to network error on first page.");
-            const dummyDescriptions: Record<string, string> = {};
-            dummySamGovOpportunities.forEach(opp => {
-                dummyDescriptions[opp.id] = opp.description || "No description available.";
-            });
-            samGovCache = {
-              data: dummySamGovOpportunities,
-              descriptions: dummyDescriptions,
-              lastFetched: currentTime,
-            };
-            return applyFilters(dummySamGovOpportunities, dummyDescriptions, searchCriteria);
+            samGovCache = { data: dummySamGovOpportunities, lastFetched: currentTime };
+            return applyFilters(dummySamGovOpportunities, searchCriteria);
        }
-      hasMore = false; // Stop fetching on error
+      hasMore = false;
       break;
     }
   }
   
   if (allOpportunitiesData.length === 0) {
     console.warn("API did not return any opportunities, or all fetches failed. Falling back to dummy data for this cycle.");
-    const dummyDescriptions: Record<string, string> = {};
-    dummySamGovOpportunities.forEach(opp => {
-        dummyDescriptions[opp.id] = opp.description || "No description available.";
-    });
-    samGovCache = {
-      data: dummySamGovOpportunities,
-      descriptions: dummyDescriptions,
-      lastFetched: currentTime,
-    };
-    return applyFilters(dummySamGovOpportunities, dummyDescriptions, searchCriteria);
+    samGovCache = { data: dummySamGovOpportunities, lastFetched: currentTime };
+    return applyFilters(dummySamGovOpportunities, searchCriteria);
   }
-
 
   console.log(`Fetched a total of ${allOpportunitiesData.length} opportunities from API over ${pagesFetched} page(s).`);
 
-  const descriptionsMap: Record<string, string> = {};
   const mappedOpportunities: SamGovOpportunity[] = allOpportunitiesData.map((apiOpp: any) => {
     let ncodeString = '';
     if (Array.isArray(apiOpp.naicsCode)) {
@@ -412,9 +375,7 @@ export async function getSamGovOpportunities(
     const subtier = parentPath[1]?.trim() || 'N/A';
     const office = parentPath.length > 2 ? parentPath.slice(2).join('. ').trim() : (parentPath.pop()?.trim() || 'N/A');
 
-
     const descriptionText = apiOpp.description || 'No description available.';
-    descriptionsMap[apiOpp.noticeId] = descriptionText;
 
     return {
       id: apiOpp.noticeId,
@@ -424,45 +385,41 @@ export async function getSamGovOpportunities(
       subtier: subtier,
       office: office,
       location: locationObject,
-      closingDate: apiOpp.responseDeadLine, // API uses responseDeadLine
+      closingDate: apiOpp.responseDeadLine,
       type: apiOpp.type || 'N/A',
       link: apiOpp.uiLink || '#',
       officeAddress: officeAddressString,
-      description: descriptionText // Store the description directly
+      description: descriptionText, // Store raw description (text or URL)
     };
   });
 
-  console.log("Finished mapping API data. Descriptions map populated.");
-
   samGovCache = {
     data: mappedOpportunities,
-    descriptions: descriptionsMap,
     lastFetched: currentTime,
   };
   console.log(`SAM.gov cache updated with live API data. ${mappedOpportunities.length} opportunities stored.`);
 
-  return applyFilters(mappedOpportunities, descriptionsMap, searchCriteria);
+  return applyFilters(mappedOpportunities, searchCriteria);
 }
 
 
-// Helper function to apply filters (used for both dummy data and cached data)
+// Helper function to apply filters
 function applyFilters(
   opportunities: SamGovOpportunity[],
-  descriptions: Record<string, string>, // This can now be derived directly from opportunities if descriptions are part of SamGovOpportunity
   searchCriteria: Record<string, any>
 ): SamGovOpportunity[] {
   const { ncode, location, dateFilter, showOnlyOpen, searchQuery } = searchCriteria;
 
   return opportunities.filter(opportunity => {
     const searchLower = searchQuery?.toLowerCase() || '';
-    // Use opportunity.description directly as it's now part of the SamGovOpportunity interface
+    // Use opportunity.description directly
     const descriptionText = opportunity.description || '';
     const matchesSearch = !searchQuery || (
       opportunity.title?.toLowerCase().includes(searchLower) ||
       opportunity.department?.toLowerCase().includes(searchLower) ||
       opportunity.subtier?.toLowerCase().includes(searchLower) ||
       opportunity.office?.toLowerCase().includes(searchLower) ||
-      descriptionText.toLowerCase().includes(searchLower)
+      descriptionText.toLowerCase().includes(searchLower) // Search in description text
     );
 
     const ncodeLower = ncode?.toLowerCase();
@@ -488,8 +445,6 @@ function applyFilters(
     const isOpen = closingDate && closingDate >= today;
     const matchesOpen = !showOnlyOpen || isOpen;
 
-
     return matchesSearch && matchesNaics && matchesLocation && matchesDate && matchesOpen;
   });
 }
-
