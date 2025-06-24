@@ -67,7 +67,6 @@ export default function SamGovOpportunitiesPage() {
         }
         const opportunities: SamGovOpportunity[] = await response.json();
         setAllOpportunities(opportunities);
-
       } catch (error: any) {
         console.error("Error fetching SAM.gov data from API route:", error);
         setError(error.message || "Failed to load opportunities.");

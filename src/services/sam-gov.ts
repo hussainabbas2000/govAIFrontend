@@ -30,6 +30,7 @@ const singleDummyOpportunityForRateLimit: SamGovOpportunity = {
   link: '#',
   officeAddress: 'N/A',
   description: 'We are experiencing high demand on the SAM.gov API. To ensure fair access, your request has been temporarily paused. This is a placeholder listing. Please try again later.',
+  resourceLinks: []
 };
 
 
@@ -156,6 +157,8 @@ export async function getSamGovOpportunities(
       }
 
       allFetchedOpportunitiesData.push(...data.opportunitiesData);
+      console.log(allFetchedOpportunitiesData);
+
 
       if (data.opportunitiesData.length < limit) {
         hasMore = false;
@@ -173,10 +176,12 @@ export async function getSamGovOpportunities(
     }
     pagesFetched++;
   }
+  console.log(allFetchedOpportunitiesData);
   
   if (allFetchedOpportunitiesData.length > 0) {
     console.log(`Fetched a total of ${allFetchedOpportunitiesData.length} opportunities from API over ${pagesFetched} page(s).`);
     const mappedOpportunities: SamGovOpportunity[] = allFetchedOpportunitiesData.map((apiOpp: any) => {
+      console.log('Raw SAM.gov API opportunity:', apiOpp); // Log the raw API response object
       let ncodeString = '';
       if (Array.isArray(apiOpp.naicsCode)) {
         ncodeString = apiOpp.naicsCode.join(',');
@@ -205,9 +210,8 @@ export async function getSamGovOpportunities(
       const department = parentPath[0]?.trim() || 'N/A';
       const subtier = parentPath[1]?.trim() || 'N/A';
       const office = parentPath.length > 2 ? parentPath.slice(2).join('. ').trim() : (parentPath.pop()?.trim() || 'N/A');
-      
       const descriptionText = apiOpp.description || 'No description available.';
-
+      const resourceLinks = apiOpp.resourceLinks || [];
       return {
         id: apiOpp.noticeId,
         title: apiOpp.title || 'N/A',
@@ -221,6 +225,7 @@ export async function getSamGovOpportunities(
         link: apiOpp.uiLink || '#',
         officeAddress: officeAddressString,
         description: descriptionText, 
+        resourceLinks: resourceLinks,
       };
     });
 

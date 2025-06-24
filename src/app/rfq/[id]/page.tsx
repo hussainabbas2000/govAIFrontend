@@ -17,6 +17,7 @@ import type { OngoingBid } from '@/app/page';
 
 
 interface BidSummary extends SummarizeContractOpportunityOutput {
+  [x: string]: any;
   title: string;
   id: string;
 }
@@ -116,7 +117,7 @@ export default function RfqPage() {
         const productQuantitiesForApi = summaryOutput.quantities;
 
         if (summaryOutput.requiredProductService && summaryOutput.requiredProductService.length > 0 && productQuantitiesForApi) {
-          const productsForApi = summaryOutput.requiredProductService.map(productName => ({
+          const productsForApi = summaryOutput.requiredProductService.map((productName: string | number) => ({
             name: productName,
             quantity: productQuantitiesForApi[productName] || 1 
           }));

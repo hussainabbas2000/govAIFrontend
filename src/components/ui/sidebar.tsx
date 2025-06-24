@@ -175,7 +175,7 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+    const { isMobile, state, openMobile, setOpenMobile, toggleSidebar } = useSidebar()
 
     if (collapsible === "none") {
       return (
@@ -250,16 +250,25 @@ const Sidebar = React.forwardRef<
             <div
               data-sidebar="sidebar"
               className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
-              style={{backgroundColor: 'hsl(144, 24%, 18%)'}}
+              style={{ backgroundColor: 'hsl(144, 24%, 18%)' }}
             >
               {children}
             </div>
+
+            {/* Desktop toggle button */}
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 transform">
+              <Button variant="ghost" size="icon" onClick={toggleSidebar} className="h-7 w-7">
+                <PanelLeft />
+                <span className="sr-only">Toggle Sidebar</span>
+              </Button>
+            </div>
+            
           </div>
         </div>
       </>
     )
   }
-)
+);
 Sidebar.displayName = "Sidebar"
 
 const SidebarTrigger = React.forwardRef<
@@ -292,7 +301,7 @@ const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button">
 >(({ className, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar, isMobile } = useSidebar()
 
   return (
     <button
@@ -454,7 +463,7 @@ SidebarGroupLabel.displayName = "SidebarGroupLabel"
 
 const SidebarGroupAction = React.forwardRef<
   HTMLButtonElement,
-  React.ComponentProps<"button"> & { asChild?: boolean }
+  React.ComponentProps<"button"> & { asChild?: boolean; showOnHover?: boolean }
 >(({ className, asChild = false, showOnHover = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "button"
 
@@ -468,7 +477,7 @@ const SidebarGroupAction = React.forwardRef<
         "after:absolute after:-inset-2 after:md:hidden",
         "group-data-[collapsible=icon]:hidden",
         showOnHover &&
-          "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground md:opacity-0",
+        "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground md:opacity-0",
         className
       )}
       {...props}
@@ -619,7 +628,7 @@ const SidebarMenuAction = React.forwardRef<
         "peer-data-[size=lg]/menu-button:top-2.5",
         "group-data-[collapsible=icon]:hidden",
         showOnHover &&
-          "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground md:opacity-0",
+        "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground md:opacity-0",
         className
       )}
       {...props}

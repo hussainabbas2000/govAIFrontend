@@ -71,6 +71,15 @@ export default function SamGovOpportunityPage() {
           } else {
             setDetailedDescription(initialDesc || 'No description available.');
           }
+
+          const attachments = foundOpportunity.resourceLinks;
+          console.log("HERE!!!", attachments)
+          if (attachments && attachments.length > 0) {
+            console.log(attachments)
+          }
+
+
+
         } else {
           setError('Opportunity not found.');
           setOpportunity(null);
