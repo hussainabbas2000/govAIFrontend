@@ -1,25 +1,32 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import type { SamGovOpportunity } from '@/types/sam-gov';
-import { fetchAnalyzedContractSummary } from '@/ai/flows/summarize-contract-opportunity';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import Loading from '@/app/loading';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ClipboardList, FileText, ShoppingCart, Terminal, AlertCircle } from 'lucide-react';
-import type { OngoingBid } from '@/app/page';
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import type { SamGovOpportunity } from "@/types/sam-gov";
+import { fetchAnalyzedContractSummary } from "@/ai/flows/summarize-contract-opportunity";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import Loading from "@/app/loading";
+import { parseDescriptionWithGemini } from "@/ai/flows/summarize-contract-opportunity"; // or wherever you place it
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  ClipboardList,
+  FileText,
+  ShoppingCart,
+  Terminal,
+  AlertCircle,
+} from "lucide-react";
+import type { OngoingBid } from "@/app/page";
 
 function formatKey(key: string): string {
   return key
-    .replace(/_/g, ' ')
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function renderContent(value: any): React.ReactNode {
-  if (typeof value === 'string' || typeof value === 'number') {
+  if (typeof value === "string" || typeof value === "number") {
     return <p>{value}</p>;
   }
 
@@ -33,7 +40,7 @@ function renderContent(value: any): React.ReactNode {
     );
   }
 
-  if (typeof value === 'object' && value !== null) {
+  if (typeof value === "object" && value !== null) {
     return (
       <div className="space-y-2">
         {Object.entries(value).map(([k, v]) => (
@@ -73,30 +80,54 @@ export default function BidSummaryPage() {
         const response = await fetch(`/api/sam-gov?id=${id}`);
         if (!response.ok) {
           const err = await response.json();
-          throw new Error(err.error || 'Failed to fetch opportunity.');
+          throw new Error(err.error || "Failed to fetch opportunity.");
         }
 
         const opportunities: SamGovOpportunity[] = await response.json();
         const opportunity = opportunities.find((op) => op.id === id);
-        if (!opportunity) throw new Error('Opportunity not found.');
+        if (!opportunity) throw new Error("Opportunity not found.");
 
-        const aiSummary = await fetchAnalyzedContractSummary(opportunity.resourceLinks);
-        console.log("HERET")
-        if (aiSummary) {
-          setSummary({
-            ...aiSummary,
-            title: opportunity.title,
-            id: opportunity.id,
-            agency: opportunity.department || 'N/A',
-            originalOpportunityLink: opportunity.link,
-            originalClosingDate: opportunity.closingDate,
-          });
+        if (opportunity.resourceLinks.length == 0) {
+          const api_key = process.env.NEXT_PUBLIC_SAM_GOV_API_KEY;
+          const res = await fetch(
+            `${opportunity.description}&api_key=${api_key}`
+          );
+
+          const desc = await res.json();
+          const descsummary = await parseDescriptionWithGemini(desc);
+          console.log("HHHH:", descsummary);
+          if (descsummary){
+            setSummary({
+              ...descsummary,
+              title: opportunity.title,
+              id: opportunity.id,
+              agency: opportunity.department || "N/A",
+              originalOpportunityLink: opportunity.link,
+              originalClosingDate: opportunity.closingDate,
+            });
+          } else{
+            throw new Error("Failed to generate AI Summary.")
+          }
         } else {
-          throw new Error('Failed to generate AI summary.');
+          const aiSummary = await fetchAnalyzedContractSummary(
+            opportunity.resourceLinks
+          );
+          if (aiSummary) {
+            setSummary({
+              ...aiSummary,
+              title: opportunity.title,
+              id: opportunity.id,
+              agency: opportunity.department || "N/A",
+              originalOpportunityLink: opportunity.link,
+              originalClosingDate: opportunity.closingDate,
+            });
+          } else {
+            throw new Error("Failed to generate AI summary.");
+          }
         }
       } catch (err: any) {
         console.error(err);
-        setError(err.message || 'Unexpected error');
+        setError(err.message || "Unexpected error");
       } finally {
         setLoading(false);
       }
@@ -111,36 +142,37 @@ export default function BidSummaryPage() {
     setSubmissionError(null);
 
     try {
-      const existingBidsString = localStorage.getItem('ongoingBids');
+      const existingBidsString = localStorage.getItem("ongoingBids");
       let existingBids: OngoingBid[] = [];
       if (existingBidsString) {
         try {
           existingBids = JSON.parse(existingBidsString);
           if (!Array.isArray(existingBids)) existingBids = [];
         } catch {
-          localStorage.removeItem('ongoingBids');
+          localStorage.removeItem("ongoingBids");
         }
       }
 
       const bidIndex = existingBids.findIndex((b) => b.id === id);
       if (bidIndex !== -1) {
-        existingBids[bidIndex].status = 'Drafting';
+        existingBids[bidIndex].status = "Drafting";
       } else {
         existingBids.push({
           id: summary.id,
           title: summary.title,
           agency: summary.agency,
-          status: 'Drafting',
-          deadline: summary.originalClosingDate || 'N/A',
-          source: 'SAM.gov',
-          linkToOpportunity: summary.originalOpportunityLink || `/sam-gov/${summary.id}`,
+          status: "Drafting",
+          deadline: summary.originalClosingDate || "N/A",
+          source: "SAM.gov",
+          linkToOpportunity:
+            summary.originalOpportunityLink || `/sam-gov/${summary.id}`,
         });
       }
 
-      localStorage.setItem('ongoingBids', JSON.stringify(existingBids));
+      localStorage.setItem("ongoingBids", JSON.stringify(existingBids));
     } catch (err: any) {
       console.error(err);
-      setSubmissionError(err.message || 'Failed to start bid.');
+      setSubmissionError(err.message || "Failed to start bid.");
     } finally {
       setIsSubmitting(false);
     }
@@ -149,32 +181,34 @@ export default function BidSummaryPage() {
   const handleProceedToQuoteRequest = () => {
     handleStartBiddingProcess();
 
-    const existingBidsString = localStorage.getItem('ongoingBids');
+    const existingBidsString = localStorage.getItem("ongoingBids");
     let existingBids: OngoingBid[] = [];
     if (existingBidsString) {
       try {
         existingBids = JSON.parse(existingBidsString);
       } catch {
-        localStorage.removeItem('ongoingBids');
+        localStorage.removeItem("ongoingBids");
       }
     }
-
     const bidIndex = existingBids.findIndex((b) => b.id === summary.id);
     if (bidIndex !== -1) {
-      existingBids[bidIndex].status = 'RFQs Sent';
+      existingBids[bidIndex].status = "RFQs Sent";
     } else {
       existingBids.push({
         id: summary.id,
         title: summary.title,
         agency: summary.agency,
-        status: 'RFQs Sent',
-        deadline: summary.originalClosingDate || 'N/A',
-        source: 'SAM.gov',
-        linkToOpportunity: summary.originalOpportunityLink || `/sam-gov/${summary.id}`,
+        status: "RFQs Sent",
+        deadline: summary.originalClosingDate || "N/A",
+        source: "SAM.gov",
+        linkToOpportunity:
+          summary.originalOpportunityLink || `/sam-gov/${summary.id}`,
       });
     }
 
-    localStorage.setItem('ongoingBids', JSON.stringify(existingBids));
+    
+    localStorage.setItem("ongoingBids", JSON.stringify(existingBids));
+    localStorage.setItem("summary", JSON.stringify(summary));
     router.push(`/rfq/${summary.id}`);
   };
 
@@ -187,7 +221,11 @@ export default function BidSummaryPage() {
           <Terminal className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
-          <Button onClick={() => router.back()} variant="secondary" className="mt-4">
+          <Button
+            onClick={() => router.back()}
+            variant="secondary"
+            className="mt-4"
+          >
             Go Back
           </Button>
         </Alert>
@@ -199,7 +237,11 @@ export default function BidSummaryPage() {
     return (
       <main className="flex flex-1 items-center justify-center p-6">
         <p>Bid summary could not be loaded.</p>
-        <Button onClick={() => router.back()} variant="secondary" className="mt-4">
+        <Button
+          onClick={() => router.back()}
+          variant="secondary"
+          className="mt-4"
+        >
           Go Back
         </Button>
       </main>
@@ -233,8 +275,12 @@ export default function BidSummaryPage() {
       )}
 
       <div className="flex justify-end space-x-4 mt-8">
-        <Button variant="outline" onClick={handleStartBiddingProcess} disabled={isSubmitting}>
-          {isSubmitting ? 'Processing...' : 'Start Bidding Process'}
+        <Button
+          variant="outline"
+          onClick={handleStartBiddingProcess}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Processing..." : "Start Bidding Process"}
         </Button>
         <Button onClick={handleProceedToQuoteRequest} disabled={isSubmitting}>
           <ShoppingCart className="mr-2 h-4 w-4" />

@@ -6,12 +6,12 @@
  */
 async function fetchAnalyzedContractSummary(urls: string[]) {
   try {
-    const response = await fetch('https://flasksummaryapi.onrender.com/analyze-solicitations', {
+    const response = await fetch('http://localhost:9000/analyze-solicitations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ urls }),
     });
-
+// ADD TYPE FOR DESC SUMMARY
     if (!response.ok) {
       const errorData = await response.json();
       console.error('Error from Flask API:', errorData);
@@ -26,4 +26,16 @@ async function fetchAnalyzedContractSummary(urls: string[]) {
   }
 }
 
-export { fetchAnalyzedContractSummary };
+async function parseDescriptionWithGemini(description: string) {
+  const res = await fetch("/api/gemini/parse-description", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ description: description }),
+  });
+
+  if (!res.ok) throw new Error("Gemini failed to parse description");
+
+  return await res.json(); // assumed to return a structured summary
+}
+
+export { fetchAnalyzedContractSummary, parseDescriptionWithGemini};

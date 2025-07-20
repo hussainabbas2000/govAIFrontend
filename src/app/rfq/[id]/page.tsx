@@ -4,7 +4,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { SamGovOpportunity } from '@/types/sam-gov'; // Updated import
-import { summarizeContractOpportunity, SummarizeContractOpportunityOutput } from '@/ai/flows/summarize-contract-opportunity';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Loading from '@/app/loading';
@@ -16,11 +15,7 @@ import Link from 'next/link';
 import type { OngoingBid } from '@/app/page';
 
 
-interface BidSummary extends SummarizeContractOpportunityOutput {
-  [x: string]: any;
-  title: string;
-  id: string;
-}
+
 
 // --- Types for Flask API Response ---
 interface FlaskApiOffer {
@@ -69,7 +64,7 @@ export default function RfqPage() {
   const id = params.id as string;
 
   const [opportunity, setOpportunity] = useState<SamGovOpportunity | null>(null);
-  const [bidSummary, setBidSummary] = useState<BidSummary | null>(null);
+  const [bidSummary, setBidSummary] = useState<any | null>(null);
   const [pricingInfo, setPricingInfo] = useState<UiFindProductPricingOutput | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,19 +100,21 @@ export default function RfqPage() {
         setOpportunity(currentOpportunity);
         console.log("Current opportunity set:", currentOpportunity);
 
-        const summaryOutput = await summarizeContractOpportunity({ opportunity: currentOpportunity });
-        const currentBidSummary: BidSummary = { 
+        const summaryOutput: any = localStorage.getItem('summary');
+        const currentBidSummary = { 
           ...summaryOutput,
           title: currentOpportunity.title,
           id: currentOpportunity.id,
         };
         setBidSummary(currentBidSummary);
-        console.log("AI Summary received:", summaryOutput);
+        console.log("AI Summary received:", (summaryOutput));
         
+
+
         const productQuantitiesForApi = summaryOutput.quantities;
 
-        if (summaryOutput.requiredProductService && summaryOutput.requiredProductService.length > 0 && productQuantitiesForApi) {
-          const productsForApi = summaryOutput.requiredProductService.map((productName: string | number) => ({
+        if (summaryOutput.product_service_breakdown.Requested_Product && summaryOutput.product_service_breakdown.Requested_Product.length > 0 && productQuantitiesForApi) {
+          const productsForApi = summaryOutput.product_service_breakdown.Requested_Product.map((productName: string | number) => ({
             name: productName,
             quantity: productQuantitiesForApi[productName] || 1 
           }));
@@ -130,7 +127,7 @@ export default function RfqPage() {
           console.log("Requesting bulk pricing with payload:", JSON.stringify(flaskApiPayload, null, 2));
 
 
-          const flaskApiResponse = await fetch("https://flask-api-f61b.onrender.com/bulk-pricing", {
+          const flaskApiResponse = await fetch("http://127.0.0.1:4000/bulk-pricing", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(flaskApiPayload),

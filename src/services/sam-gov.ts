@@ -91,7 +91,7 @@ export async function getSamGovOpportunities(
 
   console.log("File cache is stale, empty, or non-existent. Attempting to fetch fresh SAM.gov opportunities from API.");
   const apiKey = process.env.SAM_GOV_API_KEY ?? process.env.NEXT_PUBLIC_SAM_GOV_API_KEY;
-
+  console.log(apiKey)
   if (!apiKey) {
     console.warn('SAM_GOV_API_KEY or NEXT_PUBLIC_SAM_GOV_API_KEY is not set. Using existing cache or returning empty.');
     return applyFilters(samGovCacheFromFile?.data || [], searchCriteria);
