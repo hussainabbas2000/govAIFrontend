@@ -274,17 +274,19 @@ export default function BidSummaryPage() {
       )}
 
       <div className="flex justify-end space-x-4 mt-8">
-        <Button
+        {/* <Button
           variant="outline"
           onClick={handleStartBiddingProcess}
           disabled={isSubmitting}
         >
           {isSubmitting ? "Processing..." : "Start Bidding Process"}
-        </Button>
-        <Button onClick={handleProceedToQuoteRequest} disabled={isSubmitting}>
+        </Button> */}
+
+        {/* SHOULD UNCOMMENT LATER */}
+        {/* <Button onClick={handleProceedToQuoteRequest} disabled={isSubmitting}>
           <ShoppingCart className="mr-2 h-4 w-4" />
           Proceed to Quote Request
-        </Button>
+        </Button> */}
       </div>
     </main>
   );
