@@ -6,7 +6,7 @@
  */
 async function fetchAnalyzedContractSummary(urls: string[]) {
   try {
-    const response = await fetch('http://localhost:9000/analyze-solicitations', {
+    const response = await fetch('https://backendgovai.onrender.com:9000/analyze-solicitations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ urls }),

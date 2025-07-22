@@ -95,7 +95,6 @@ export default function BidSummaryPage() {
 
           const desc = await res.json();
           const descsummary = await parseDescriptionWithGemini(desc);
-          console.log("HHHH:", descsummary);
           if (descsummary){
             setSummary({
               ...descsummary,
