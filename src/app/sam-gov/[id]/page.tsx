@@ -218,10 +218,15 @@ export default function SamGovOpportunityPage() {
               )}
             </div>
 
-            <div className="md:col-span-2 mt-6 flex justify-end">
+            <div className="md:col-span-2 mt-6 gap-10 flex justify-end">
               <Button asChild size="lg">
                 <Link href={`/sam-gov/${id}/bid-summary`}>
                   Start Bidding Process
+                </Link>
+              </Button>
+              <Button asChild size="lg">
+                <Link href={`/sam-gov/${id}/quotenegotiation`}>
+                  Quote Negotiation
                 </Link>
               </Button>
             </div>
