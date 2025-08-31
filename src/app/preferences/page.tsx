@@ -1,73 +1,80 @@
+'use client'
 
-'use client';
-
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { useToast } from '@/hooks/use-toast'
+import { getPreferences, updatePreferences } from '@/lib/supabase/preferences'
 
 interface UserPreferences {
-  opportunityType: 'product' | 'service' | 'product/service' | '';
-  location: string;
-  interestedDepartments: string;
+  opportunity_type: 'product' | 'service' | 'product/service' | 'none'
+  location: string
+  interested_departments: string
 }
 
 export default function PreferencesPage() {
-  const { toast } = useToast();
+  const { toast } = useToast()
   const [preferences, setPreferences] = useState<UserPreferences>({
-    opportunityType: '',
-    location: '',
-    interestedDepartments: '',
-  });
-  const [isClient, setIsClient] = useState(false);
+    opportunity_type: 'none',
+    location: 'none',
+    interested_departments: 'none',
+  })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
-  // Load preferences from localStorage on mount (client-side only)
+  // fetch preferences on mount
   useEffect(() => {
-    setIsClient(true); // Ensure this runs only on the client
-    const savedPreferences = localStorage.getItem('userPreferences');
-    if (savedPreferences) {
+    const fetchPreferences = async () => {
       try {
-        setPreferences(JSON.parse(savedPreferences));
-      } catch (error) {
-        console.error('Failed to parse saved preferences:', error);
-        // Optionally clear invalid preferences
-        // localStorage.removeItem('userPreferences');
+        const data = await getPreferences()
+        setPreferences(data)
+      } catch (err: any) {
+        console.error('Error fetching preferences:', err.message)
+        toast({
+          title: 'Error',
+          description: err.message,
+          variant: 'destructive',
+        })
+      } finally {
+        setLoading(false)
       }
     }
-  }, []);
+
+    fetchPreferences()
+  }, [toast])
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = event.target;
-    setPreferences(prev => ({ ...prev, [name]: value }));
-  };
+    const { name, value } = event.target
+    setPreferences(prev => ({ ...prev, [name]: value }))
+  }
 
-  const handleSelectChange = (value: UserPreferences['opportunityType']) => {
-    setPreferences(prev => ({ ...prev, opportunityType: value }));
-  };
+  const handleSelectChange = (value: UserPreferences['opportunity_type']) => {
+    setPreferences(prev => ({ ...prev, opportunity_type: value }))
+  }
 
-  const handleSavePreferences = () => {
-    if (!isClient) return; // Prevent saving during SSR or before hydration
-
+  const handleSavePreferences = async () => {
+    setSaving(true)
     try {
-        localStorage.setItem('userPreferences', JSON.stringify(preferences));
-        toast({
-          title: "Preferences Saved",
-          description: "Your preferences have been successfully updated.",
-        });
-
-        console.log(localStorage.getItem('userPreferences'))
-    } catch (error) {
-        console.error('Failed to save preferences:', error);
-        toast({
-          title: "Error Saving Preferences",
-          description: "Could not save your preferences. Please try again.",
-          variant: "destructive",
-        });
+      const data = await updatePreferences(preferences)
+      setPreferences(data)
+      toast({
+        title: 'Preferences Saved',
+        description: 'Your preferences have been successfully updated.',
+      })
+    } catch (err: any) {
+      console.error('Failed to save preferences:', err.message)
+      toast({
+        title: 'Error',
+        description: err.message,
+        variant: 'destructive',
+      })
+    } finally {
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
@@ -79,62 +86,69 @@ export default function PreferencesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="opportunityType">Opportunity Type</Label>
-            <Select
-              name="opportunityType"
-              value={preferences.opportunityType}
-              onValueChange={handleSelectChange}
-              disabled={!isClient} // Disable until client-side hydration
-            >
-              <SelectTrigger id="opportunityType">
-                <SelectValue placeholder="Select preference" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="product">Product Based</SelectItem>
-                <SelectItem value="service">Service Based</SelectItem>
-                <SelectItem value="product/service">Product & Service Mix</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {loading ? (
+            <p>Loading preferences...</p>
+          ) : (
+            <>
+              {/* Opportunity Type */}
+              <div className="grid w-full max-w-sm items-center gap-1.5">
+                <Label htmlFor="opportunity_type">Opportunity Type</Label>
+                <Select
+                  name="opportunity_type"
+                  value={preferences.opportunity_type}
+                  onValueChange={handleSelectChange}
+                >
+                  <SelectTrigger id="opportunity_type">
+                    <SelectValue placeholder="Select preference" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="product">Product Based</SelectItem>
+                    <SelectItem value="service">Service Based</SelectItem>
+                    <SelectItem value="product/service">Product & Service Mix</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="location">Preferred Location(s)</Label>
-            <Input
-              type="text"
-              id="location"
-              name="location"
-              placeholder="e.g., Philadelphia, PA; New York, NY"
-              value={preferences.location}
-              onChange={handleInputChange}
-              disabled={!isClient} // Disable until client-side hydration
-            />
-            <p className="text-xs text-muted-foreground">
-              Enter cities, states, or regions separated by semicolons. Leave blank for nationwide.
-            </p>
-          </div>
+              {/* Location */}
+              <div className="grid w-full max-w-sm items-center gap-1.5">
+                <Label htmlFor="location">Preferred Location(s)</Label>
+                <Input
+                  type="text"
+                  id="location"
+                  name="location"
+                  placeholder="e.g., Philadelphia, PA; New York, NY"
+                  value={preferences.location}
+                  onChange={handleInputChange}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enter cities, states, or regions separated by semicolons. Leave blank for nationwide.
+                </p>
+              </div>
 
-          <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="interestedDepartments">Interested Departments/Agencies</Label>
-            <Input
-              type="text"
-              id="interestedDepartments"
-              name="interestedDepartments"
-              placeholder="e.g., Department of Defense; GSA"
-              value={preferences.interestedDepartments}
-              onChange={handleInputChange}
-              disabled={!isClient} // Disable until client-side hydration
-            />
-             <p className="text-xs text-muted-foreground">
-              Enter specific agencies or departments separated by semicolons. Leave blank for all.
-            </p>
-          </div>
+              {/* Interested Departments */}
+              <div className="grid w-full max-w-sm items-center gap-1.5">
+                <Label htmlFor="interested_departments">Interested Departments/Agencies</Label>
+                <Input
+                  type="text"
+                  id="interested_departments"
+                  name="interested_departments"
+                  placeholder="e.g., Department of Defense; GSA"
+                  value={preferences.interested_departments}
+                  onChange={handleInputChange}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enter specific agencies or departments separated by semicolons. Leave blank for all.
+                </p>
+              </div>
 
-           <Button onClick={handleSavePreferences} disabled={!isClient}>
-             Save Preferences
-           </Button>
+              <Button onClick={handleSavePreferences} disabled={saving}>
+                {saving ? 'Saving...' : 'Save Preferences'}
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
     </main>
-  );
+  )
 }
