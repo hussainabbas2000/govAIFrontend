@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import type { SamGovOpportunity } from "@/types/sam-gov";
 import { fetchAnalyzedContractSummary } from "@/ai/flows/summarize-contract-opportunity";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,7 +74,15 @@ export default function BidSummaryPage() {
 
   useEffect(() => {
     if (!isClient || !id) return;
-
+    let savedData = localStorage.getItem(`summary-${id}`)
+    if(savedData !== null){
+      const x = JSON.parse(savedData)
+      if (x){
+      setSummary(x)
+      setLoading(false)
+      return;
+      }
+    }
     const fetchData = async () => {
       setLoading(true);
       try {
@@ -82,7 +91,6 @@ export default function BidSummaryPage() {
           const err = await response.json();
           throw new Error(err.error || "Failed to fetch opportunity.");
         }
-
         const opportunities: SamGovOpportunity[] = await response.json();
         const opportunity = opportunities.find((op) => op.id === id);
         if (!opportunity) throw new Error("Opportunity not found.");
@@ -104,6 +112,19 @@ export default function BidSummaryPage() {
               originalOpportunityLink: opportunity.link,
               originalClosingDate: opportunity.closingDate,
             });
+            const finalSummary = {
+              ...descsummary,
+              title: opportunity.title,
+              id: opportunity.id,
+              agency: opportunity.department || "N/A",
+              originalOpportunityLink: opportunity.link,
+              originalClosingDate: opportunity.closingDate,
+            }
+            sessionStorage.setItem(id,JSON.stringify(finalSummary))
+            let savedData = localStorage.getItem(`summary-${id}`)
+            if(!savedData){
+              localStorage.setItem(`summary-${id}`,JSON.stringify(finalSummary))
+            }
           } else{
             throw new Error("Failed to generate AI Summary.")
           }
@@ -120,6 +141,18 @@ export default function BidSummaryPage() {
               originalOpportunityLink: opportunity.link,
               originalClosingDate: opportunity.closingDate,
             });
+            const finalSummary = {
+              ...aiSummary,
+              title: opportunity.title,
+              id: opportunity.id,
+              agency: opportunity.department || "N/A",
+              originalOpportunityLink: opportunity.link,
+              originalClosingDate: opportunity.closingDate,
+            }
+            let savedData = localStorage.getItem(`summary-${id}`)
+            if(!savedData){
+              localStorage.setItem(`summary-${id}`,JSON.stringify(finalSummary))
+            }
           } else {
             throw new Error("Failed to generate AI summary.");
           }
@@ -264,6 +297,12 @@ export default function BidSummaryPage() {
           <CardContent>{renderContent(value)}</CardContent>
         </Card>
       ))}
+
+       <Button asChild size="lg">
+          <Link href={`/sam-gov/${id}/quotenegotiation`}>
+                Quote Negotiation
+          </Link>
+        </Button>
 
       {submissionError && (
         <Alert variant="destructive">

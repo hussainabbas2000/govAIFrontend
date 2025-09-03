@@ -61,6 +61,7 @@ export default function BidSummaryPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if(!opportunityId) return
     fetchOpportunityDetails();
   }, [opportunityId]);
 
@@ -106,16 +107,17 @@ export default function BidSummaryPage() {
       setError('Please enter a valid target price');
       return;
     }
-
+    let savedData = localStorage.getItem(`summary-${opportunityId}`)
+    if(!savedData) return;
+    const parsedData = JSON.parse(savedData)
     setSubmitting(true);
     setError(null);
-
     try {
       const response = await fetch('/api/sam-gov/negotiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          opportunity,
+          opportunity:parsedData,
           targetPrice: parseFloat(targetPrice),
           additionalRequirements,
           numSuppliers: parseInt(numSuppliers),

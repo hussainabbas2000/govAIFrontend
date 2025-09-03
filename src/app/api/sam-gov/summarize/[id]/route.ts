@@ -6,7 +6,7 @@ import OpenAI from 'openai';
 
 
 // Initialize OpenAI client
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({ apiKey: "" });
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
     try {
