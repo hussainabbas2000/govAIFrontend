@@ -5,11 +5,12 @@ const PYTHON_SERVER_URL = process.env.PYTHON_SERVER_URL || 'http://127.0.0.1:900
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { sessionId: string; supplierId: string } }
+  { params }: { params: Promise<{ sessionId: string; supplierId: string }> }
 ) {
   try {
+    const { sessionId, supplierId } = await params;
     const response = await fetch(
-      `${PYTHON_SERVER_URL}/api/negotiate/${params.sessionId}/respond/${params.supplierId}`,
+      `${PYTHON_SERVER_URL}/api/negotiate/${sessionId}/respond/${supplierId}`,
       { method: 'POST' }
     );
 

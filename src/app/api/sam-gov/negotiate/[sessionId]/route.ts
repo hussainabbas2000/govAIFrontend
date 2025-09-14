@@ -4,10 +4,11 @@ const PYTHON_SERVER_URL = process.env.PYTHON_SERVER_URL || 'http://127.0.0.1:900
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
-    const response = await fetch(`${PYTHON_SERVER_URL}/api/negotiate/${params.sessionId}`);
+    const {sessionId} = await params
+    const response = await fetch(`${PYTHON_SERVER_URL}/api/negotiate/${sessionId}`);
     
     if (!response.ok) {
       throw new Error('Failed to fetch negotiation status');
