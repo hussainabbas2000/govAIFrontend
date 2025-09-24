@@ -7,23 +7,19 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
-import { getPreferences, updatePreferences } from '@/lib/supabase/preferences'
-
-interface UserPreferences {
-  opportunity_type: 'product' | 'service' | 'product/service' | 'none'
-  location: string
-  interested_departments: string
-}
+import { getPreferences, updatePreferences, UserPreferences } from '@/lib/supabase/preferences'
+import { useRouter } from 'next/navigation'
 
 export default function PreferencesPage() {
   const { toast } = useToast()
   const [preferences, setPreferences] = useState<UserPreferences>({
-    opportunity_type: 'none',
-    location: 'none',
-    interested_departments: 'none',
+    opportunityType: '',
+    location: '',
+    interestedDepartments: '',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const router = useRouter()
 
   // fetch preferences on mount
   useEffect(() => {
@@ -51,8 +47,8 @@ export default function PreferencesPage() {
     setPreferences(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleSelectChange = (value: UserPreferences['opportunity_type']) => {
-    setPreferences(prev => ({ ...prev, opportunity_type: value }))
+  const handleSelectChange = (value: UserPreferences['opportunityType']) => {
+    setPreferences(prev => ({ ...prev, opportunityType: value }))
   }
 
   const handleSavePreferences = async () => {
@@ -64,6 +60,8 @@ export default function PreferencesPage() {
         title: 'Preferences Saved',
         description: 'Your preferences have been successfully updated.',
       })
+      router.push('/')
+
     } catch (err: any) {
       console.error('Failed to save preferences:', err.message)
       toast({
@@ -92,13 +90,13 @@ export default function PreferencesPage() {
             <>
               {/* Opportunity Type */}
               <div className="grid w-full max-w-sm items-center gap-1.5">
-                <Label htmlFor="opportunity_type">Opportunity Type</Label>
+                <Label htmlFor="opportunityType">Opportunity Type</Label>
                 <Select
-                  name="opportunity_type"
-                  value={preferences.opportunity_type}
+                  name="opportunityType"
+                  value={preferences.opportunityType}
                   onValueChange={handleSelectChange}
                 >
-                  <SelectTrigger id="opportunity_type">
+                  <SelectTrigger id="opportunityType">
                     <SelectValue placeholder="Select preference" />
                   </SelectTrigger>
                   <SelectContent>
@@ -128,13 +126,13 @@ export default function PreferencesPage() {
 
               {/* Interested Departments */}
               <div className="grid w-full max-w-sm items-center gap-1.5">
-                <Label htmlFor="interested_departments">Interested Departments/Agencies</Label>
+                <Label htmlFor="interestedDepartments">Interested Departments/Agencies</Label>
                 <Input
                   type="text"
-                  id="interested_departments"
-                  name="interested_departments"
+                  id="interestedDepartments"
+                  name="interestedDepartments"
                   placeholder="e.g., Department of Defense; GSA"
-                  value={preferences.interested_departments}
+                  value={preferences.interestedDepartments}
                   onChange={handleInputChange}
                 />
                 <p className="text-xs text-muted-foreground">

@@ -60,14 +60,21 @@ User preferences:
 Analyze the opportunity description and provide a relevance score between 0.0 and 1.0 (inclusive),
 where 1.0 is a perfect match and 0.0 is not relevant at all.
 
-Return ONLY the relevance score as a JSON object like:
+Return ONLY a JSON object like:
 { "relevanceScore": 0.75 }
 `;
 
   try {
     const response = await openai.chat.completions.create({
       model: 'gpt-4',
-      messages: [{ role: 'user', content: prompt }],
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a JSON-only API. Always respond with a valid JSON object, nothing else.',
+        },
+        { role: 'user', content: prompt },
+      ],
       temperature: 0,
     });
 
