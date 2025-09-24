@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const PYTHON_SERVER_URL = process.env.PYTHON_SERVER_URL || 'http://127.0.0.1:9000';
 
-
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ sessionId: string; supplierId: string }> }
@@ -10,19 +9,20 @@ export async function POST(
   try {
     const { sessionId, supplierId } = await params;
     const response = await fetch(
-      `${PYTHON_SERVER_URL}/api/negotiate/${sessionId}/accept/${supplierId}`,
+      `${PYTHON_SERVER_URL}/api/negotiate/${sessionId}/draft/${supplierId}`,
       { method: 'POST' }
     );
 
     if (!response.ok) {
-      throw new Error('Failed to accept quote');
+      throw new Error('Failed to generate draft response');
     }
 
-    return NextResponse.json({ success: true });
+    const data = await response.json();
+    return NextResponse.json(data);
   } catch (error) {
-    console.error('Error accepting quote:', error);
+    console.error('Error generating draft:', error);
     return NextResponse.json(
-      { error: 'Failed to accept quote' },
+      { error: 'Failed to generate draft response' },
       { status: 500 }
     );
   }

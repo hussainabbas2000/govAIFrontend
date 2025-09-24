@@ -224,11 +224,6 @@ export default function SamGovOpportunityPage() {
                   Start Bidding Process
                 </Link>
               </Button>
-              <Button asChild size="lg">
-                <Link href={`/sam-gov/${id}/quotenegotiation`}>
-                  Quote Negotiation
-                </Link>
-              </Button>
             </div>
           </CardContent>
         </Card>
