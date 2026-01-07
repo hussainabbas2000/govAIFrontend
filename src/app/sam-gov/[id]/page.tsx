@@ -11,7 +11,22 @@ import { Icons } from '@/components/icons';
 import { format, parseISO } from 'date-fns'; 
 import { Label } from '@/components/ui/label'; 
 import { Skeleton } from '@/components/ui/skeleton';
-import Link from 'next/link'; 
+import Link from 'next/link';
+import { FileText } from 'lucide-react';
+
+// Helper function to extract filename from URL
+const getFileName = (url: string): string => {
+  try {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    const filename = pathname.split('/').pop() || 'Attachment';
+    // Decode URL-encoded characters and limit length
+    const decoded = decodeURIComponent(filename);
+    return decoded.length > 50 ? decoded.substring(0, 47) + '...' : decoded;
+  } catch {
+    return 'Attachment';
+  }
+}; 
 
 export default function SamGovOpportunityPage() {
   const params = useParams();
@@ -72,11 +87,6 @@ export default function SamGovOpportunityPage() {
             setDetailedDescription(initialDesc || 'No description available.');
           }
 
-          const attachments = foundOpportunity.resourceLinks;
-          console.log("HERE!!!", attachments)
-          if (attachments && attachments.length > 0) {
-            console.log(attachments)
-          }
 
 
 
@@ -217,6 +227,31 @@ export default function SamGovOpportunityPage() {
                 </p>
               )}
             </div>
+
+            {/* Attachments Section */}
+            {opportunity.resourceLinks && opportunity.resourceLinks.length > 0 && (
+              <div className="md:col-span-2 pt-4 border-t mt-4">
+                <Label className="text-xl font-semibold text-primary mb-3 block">
+                  Attachments ({opportunity.resourceLinks.length})
+                </Label>
+                <ul className="space-y-2">
+                  {opportunity.resourceLinks.map((link, idx) => (
+                    <li key={idx} className="flex items-center">
+                      <a
+                        href={link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-accent hover:underline flex items-center gap-2 p-2 rounded-md hover:bg-accent/10 transition-colors"
+                      >
+                        <FileText className="h-4 w-4 flex-shrink-0" />
+                        <span className="break-all">{getFileName(link)}</span>
+                        <Icons.externalLink className="h-3 w-3 flex-shrink-0 ml-1" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div className="md:col-span-2 mt-6 gap-10 flex justify-end">
               <Button asChild size="lg">

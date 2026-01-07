@@ -16,8 +16,15 @@ import {
   ShoppingCart,
   Terminal,
   AlertCircle,
+  Send,
+  MessageCircle,
+  Bot,
+  User,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import type { OngoingBid } from "@/app/page";
+
+type ChatMessage = { role: "agent" | "user"; content: string };
 
 function formatKey(key: string): string {
   return key
@@ -67,10 +74,25 @@ export default function BidSummaryPage() {
   const [isClient, setIsClient] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    { role: "agent", content: "How may I help you? What questions do you have about this contract?" }
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [totalContext, setTotalContext] = useState<{ summary: any; chatHistory: ChatMessage[] } | null>(null);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Initialize totalContext when summary is loaded
+  useEffect(() => {
+    if (summary) {
+      setTotalContext({ summary, chatHistory: chatMessages });
+    }
+  }, [summary]);
 
   useEffect(() => {
     if (!isClient || !id) return;
@@ -244,6 +266,64 @@ export default function BidSummaryPage() {
     router.push(`/rfq/${summary.id}`);
   };
 
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || isSendingMessage) return;
+
+    const userMessage: ChatMessage = { role: "user", content: chatInput.trim() };
+    const updatedMessages = [...chatMessages, userMessage];
+    setChatMessages(updatedMessages);
+    setChatInput("");
+    setIsSendingMessage(true);
+
+    // Update totalContext with user message
+    setTotalContext({ summary, chatHistory: updatedMessages });
+
+    try {
+      // Combine summary with chat history for context
+      const contextPayload = {
+        summary: summary,
+        chatHistory: updatedMessages,
+        userMessage: userMessage.content,
+      };
+
+      const response = await fetch("http://localhost:9000/message-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(contextPayload),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get response from assistant");
+      }
+
+      const data = await response.json();
+      const agentMessage: ChatMessage = { role: "agent", content: data.message };
+      const messagesWithAgent = [...updatedMessages, agentMessage];
+      setChatMessages(messagesWithAgent);
+      
+      // Update totalContext with agent response
+      setTotalContext({ summary, chatHistory: messagesWithAgent });
+    } catch (err: any) {
+      console.error("Chat error:", err);
+      // Add error message as agent response
+      const errorMessage: ChatMessage = { role: "agent", content: "Sorry, I encountered an error. Please try again." };
+      const messagesWithError = [...updatedMessages, errorMessage];
+      setChatMessages(messagesWithError);
+      
+      // Update totalContext with error message
+      setTotalContext({ summary, chatHistory: messagesWithError });
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
+  const handleKeyPress = (e: { key: string; shiftKey: boolean; preventDefault: () => void }) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   if (loading) return <Loading />;
 
   if (error) {
@@ -298,11 +378,91 @@ export default function BidSummaryPage() {
         </Card>
       ))}
 
-       <Button asChild size="lg">
-          <Link href={`/sam-gov/${id}/quotenegotiation`}>
-                Quote Negotiation
-          </Link>
-        </Button>
+      {/* Chat Interface */}
+      <Card className="border-2 border-primary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <MessageCircle className="text-primary h-5 w-5" />
+            Contract Assistant
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Messages Container */}
+          <div className="h-100 overflow-y-auto rounded-lg bg-muted/30 p-4 space-y-4 border">
+            {chatMessages.map((msg: ChatMessage, index: number) => (
+              <div
+                key={index}
+                className={`flex gap-3 ${
+                  msg.role === "user" ? "flex-row-reverse" : "flex-row"
+                }`}
+              >
+                <div
+                  className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${
+                    msg.role === "agent"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-secondary-foreground"
+                  }`}
+                >
+                  {msg.role === "agent" ? (
+                    <Bot className="h-4 w-4" />
+                  ) : (
+                    <User className="h-4 w-4" />
+                  )}
+                </div>
+                <div
+                  className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
+                    msg.role === "agent"
+                      ? "bg-card border shadow-sm"
+                      : "bg-primary text-primary-foreground"
+                  }`}
+                >
+                  <p className="text-sm leading-relaxed">{msg.content}</p>
+                </div>
+              </div>
+            ))}
+            {isSendingMessage && (
+              <div className="flex gap-3">
+                <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                  <Bot className="h-4 w-4" />
+                </div>
+                <div className="bg-card border shadow-sm rounded-2xl px-4 py-2.5">
+                  <div className="flex gap-1">
+                    <span className="h-2 w-2 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:0ms]"></span>
+                    <span className="h-2 w-2 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:150ms]"></span>
+                    <span className="h-2 w-2 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:300ms]"></span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Input Area */}
+          <div className="flex gap-2">
+            <Input
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder="Type your question about this contract..."
+              disabled={isSendingMessage}
+              className="flex-1"
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={!chatInput.trim() || isSendingMessage}
+              size="icon"
+              className="shrink-0"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Button asChild size="lg">
+        <Link href={`/sam-gov/${id}/quotenegotiation`}>
+          Quote Negotiation
+        </Link>
+      </Button>
 
       {submissionError && (
         <Alert variant="destructive">

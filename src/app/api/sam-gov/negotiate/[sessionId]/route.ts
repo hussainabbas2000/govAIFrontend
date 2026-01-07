@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const PYTHON_SERVER_URL = process.env.PYTHON_SERVER_URL || 'https://backendgovai.onrender.com';
+const PYTHON_SERVER_URL = process.env.PYTHON_SERVER_URL || 'http://localhost:9000';
 
 export async function GET(
   request: NextRequest,
