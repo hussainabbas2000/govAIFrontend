@@ -1,4 +1,4 @@
-// app/api/sam-gov/negotiate/route.ts
+// app/api/sam-gov/get-ai-suppliers/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 const PYTHON_SERVER_URL = process.env.PYTHON_SERVER_URL || 'http://localhost:9000';
@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Send to Python server
-    const response = await fetch(`${PYTHON_SERVER_URL}/api/sam-gov/negotiate`, {
+    const response = await fetch(`${PYTHON_SERVER_URL}/api/sam-gov/get-ai-suppliers`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -17,16 +17,17 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to start negotiation');
+      throw new Error('Failed to get AI suppliers');
     }
 
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error in negotiate API:', error);
+    console.error('Error in get-ai-suppliers API:', error);
     return NextResponse.json(
-      { error: 'Failed to start negotiation' },
+      { error: 'Failed to get AI suppliers' },
       { status: 500 }
     );
   }
 }
+
